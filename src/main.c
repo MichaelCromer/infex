@@ -1,18 +1,15 @@
 #include <raylib.h>
 
-
 enum INFEX_SCREEN {
     INFEX_SCREEN_NONE,
     INFEX_SCREEN_TITLE,
     INFEX_SCREEN_GAME,
 };
 
-
 struct GameState {
     int screen_width, screen_height;
     enum INFEX_SCREEN screen_curr;
 };
-
 
 void draw_screen_title(struct GameState *state)
 {
@@ -31,7 +28,6 @@ void draw_screen_none(struct GameState *state)
     DrawRectangle(0, 0, state->screen_width, state->screen_height, LIGHTGRAY);
     DrawText("NULL Screen", 20, 20, 40, GRAY);
 }
-
 
 void draw_screen(struct GameState *state)
 {
@@ -53,7 +49,6 @@ void draw_screen(struct GameState *state)
     EndDrawing();
 }
 
-
 void state_update(struct GameState *state)
 {
     switch (state->screen_curr) {
@@ -72,10 +67,11 @@ void state_update(struct GameState *state)
     }
 }
 
-
 int main(void)
 {
-    struct GameState state = { .screen_width=800, .screen_height=450, .screen_curr=INFEX_SCREEN_TITLE };
+    struct GameState state = {.screen_width = 800,.screen_height = 450,.screen_curr =
+            INFEX_SCREEN_TITLE
+    };
     InitWindow(state.screen_width, state.screen_height, "Infex");
 
     while (!WindowShouldClose()) {

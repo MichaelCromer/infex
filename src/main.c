@@ -9,6 +9,8 @@ int main(void)
         .geometry = {
             .screen_width_px = 800,
             .screen_height_px = 450,
+            .hex_delta_height_px = 20,
+            .hex_delta_width_px = 20,
         },
         .world = NULL,
     };

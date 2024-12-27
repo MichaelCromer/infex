@@ -9,4 +9,6 @@ struct World {
     uint8_t *height;
 };
 
+struct World *world_create(size_t rows, size_t cols);
+
 #endif

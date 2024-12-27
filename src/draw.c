@@ -2,18 +2,29 @@
 
 #include "include/draw.h"
 
+
+void draw_terrain_tile(int x, int y, uint8_t h)
+{
+    DrawRectangle(x-5, y-5, x+5, y+5, (h == 0) ? BLUE : GREEN );
+}
+
+
 void draw_map(struct State *state)
 {
     struct World *world = state->world;
+
     if (!world) {
         return;
     }
 
-    /*int x0 = 0, y0 = 0;*/
-    for (size_t r = 0; r < state->world->rows; r++) {
-        for (size_t c = 0; c < state->world->cols; c++) {
-
+    int x = 0, y = 0, i = 0;
+    for (size_t r = 0; r < world->rows; r++) {
+        for (size_t c = 0; c < world->cols; c++) {
+            draw_terrain_tile(x, y, world->height[i]);
+            x += state->geometry.hex_delta_width_px;
+            i++;
         }
+        y += state->geometry.hex_delta_height_px;
     }
 }
 

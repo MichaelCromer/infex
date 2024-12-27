@@ -7,6 +7,7 @@ void state_update(struct State *state)
     switch (state->screen_curr) {
         case INFEX_SCREEN_TITLE:
             if (IsKeyPressed(KEY_ENTER)) {
+                state->world = world_create(10,10);
                 state->screen_curr = INFEX_SCREEN_GAME;
             }
             break;

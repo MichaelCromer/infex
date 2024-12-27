@@ -1,6 +1,10 @@
+#include <math.h>
 #include <string.h>
 
 #include "include/world.h"
+
+#define ROOT3 (1.7320508f)
+#define ROOT3_INV (0.5773502f)
 
 struct World *world_create(size_t rows, size_t cols)
 {

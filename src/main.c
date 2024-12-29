@@ -8,7 +8,6 @@ int main(void)
         .screen_curr = INFEX_SCREEN_TITLE,
         .screen_width_px = 800,
         .screen_height_px = 450,
-        .world = NULL,
     };
 
     InitWindow(state.screen_width_px, state.screen_height_px,

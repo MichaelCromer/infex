@@ -2,18 +2,14 @@
 
 #include "include/draw.h"
 
-void draw_map(struct State *state)
+void draw_map(void)
 {
-    struct World *world = state->world;
-
-    if (!world) {
-        return;
-    }
-
-    for (size_t i = 0; i < world->rows * world->cols; i++) {
-        DrawRectangleV(world->centre[i], (Vector2) {
-                       world->centre[i].x + 10, world->centre[i].y + 10},
-                       ((world->height[i] == 0) ? BLUE : GREEN));
+    Vector2 *centre = world_centres();
+    uint8_t *height = world_heights();
+    for (size_t i = 0; i < world_num_tiles(); i++) {
+        DrawRectangle(centre->x, centre->y, 10, 10, (*height == 0) ? BLUE : GREEN);
+        centre++;
+        height++;
     }
 }
 
@@ -32,7 +28,7 @@ void draw_screen_game(struct State *state)
     DrawRectangle(0, 0, screen_width, screen_height, PURPLE);
     DrawText("In-Game", 20, 20, 40, MAROON);
 
-    draw_map(state);
+    draw_map();
 }
 
 void draw_screen_none(struct State *state)

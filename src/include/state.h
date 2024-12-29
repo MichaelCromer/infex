@@ -12,7 +12,6 @@ enum INFEX_SCREEN {
 struct State {
     enum INFEX_SCREEN screen_curr;
     unsigned int screen_width_px, screen_height_px;
-    struct World *world;
 };
 
 void state_update(struct State *state);

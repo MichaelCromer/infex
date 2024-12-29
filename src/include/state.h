@@ -9,14 +9,9 @@ enum INFEX_SCREEN {
     INFEX_SCREEN_GAME,
 };
 
-struct Geometry {
-    unsigned int screen_width_px, screen_height_px;
-    unsigned int hex_radius_px, hex_delta_width_px, hex_delta_height_px;
-};
-
 struct State {
     enum INFEX_SCREEN screen_curr;
-    struct Geometry geometry;
+    unsigned int screen_width_px, screen_height_px;
     struct World *world;
 };
 

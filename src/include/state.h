@@ -1,13 +1,7 @@
 #ifndef INFEX_STATE_H
 #define INFEX_STATE_H
 
-#include "world.h"
-
-enum INFEX_SCREEN {
-    INFEX_SCREEN_NONE,
-    INFEX_SCREEN_TITLE,
-    INFEX_SCREEN_GAME,
-};
+#include "infex.h"
 
 struct State {
     enum INFEX_SCREEN screen_curr;

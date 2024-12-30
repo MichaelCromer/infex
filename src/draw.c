@@ -1,14 +1,14 @@
-#include <raylib.h>
-
+#include "include/camera.h"
 #include "include/draw.h"
+#include "include/world.h"
 
 void draw_map(void)
 {
-    Vector2 *centre = world_centres();
+    Vector2 *face = world_faces();
     uint8_t *height = world_heights();
     for (size_t i = 0; i < world_num_tiles(); i++) {
-        DrawRectangle(centre->x, centre->y, 10, 10, (*height == 0) ? BLUE : GREEN);
-        centre++;
+        DrawRectangle(face->x, face->y, 10, 10, (*height == 0) ? BLUE : GREEN);
+        face++;
         height++;
     }
 }
@@ -28,7 +28,11 @@ void draw_screen_game(struct State *state)
     DrawRectangle(0, 0, screen_width, screen_height, PURPLE);
     DrawText("In-Game", 20, 20, 40, MAROON);
 
+    BeginMode2D(camera_state());
+
     draw_map();
+
+    EndMode2D();
 }
 
 void draw_screen_none(struct State *state)

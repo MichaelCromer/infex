@@ -1,6 +1,5 @@
-#include <raylib.h>
-
 #include "include/draw.h"
+#include "include/state.h"
 
 int main(void)
 {
@@ -10,8 +9,7 @@ int main(void)
         .screen_height_px = 450,
     };
 
-    InitWindow(state.screen_width_px, state.screen_height_px,
-               "Infex");
+    InitWindow(state.screen_width_px, state.screen_height_px, "Infex");
 
     while (!WindowShouldClose()) {
         draw_screen(&state);

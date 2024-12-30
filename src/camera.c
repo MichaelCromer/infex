@@ -1,7 +1,7 @@
 #include "include/camera.h"
 #include "include/world.h"
 
-#define PAN_SPEED (10.0f)
+#define PAN_SPEED (1.0f)
 
 Camera2D camera = { 
     .target =  { 0.0f, 0.0f },
@@ -28,4 +28,5 @@ void camera_goto(Vector2 target)
 void camera_pan(Vector2 dir)
 {
     camera.target = Vector2Add(camera.target, Vector2Scale(dir, PAN_SPEED));
+    camera.target = Vector2Clamp(camera.target, Vector2Zero(), world_bounds());
 }

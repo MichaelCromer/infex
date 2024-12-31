@@ -1,7 +1,8 @@
 #include "include/camera.h"
 #include "include/world.h"
 
-#define PAN_SPEED (1.0f)
+#define PAN_FACTOR_INERTIA (128.0f)
+#define PAN_FACTOR_DRAG (0.9f)
 
 Camera2D camera = { 
     .target =  { 0.0f, 0.0f },
@@ -10,9 +11,11 @@ Camera2D camera = {
     .zoom = 1.0f,
 };
 
-Camera2D camera_state()
+Vector2 pan_velocity = { 0.0f, 0.0f };
+
+const Camera2D *camera_state()
 {
-    return camera;
+    return (const Camera2D *)&camera;
 }
 
 void camera_offset(Vector2 offset)
@@ -25,8 +28,14 @@ void camera_goto(Vector2 target)
     camera.target = target;
 }
 
-void camera_pan(Vector2 dir)
+void camera_pan(Vector2 delta)
 {
-    camera.target = Vector2Add(camera.target, Vector2Scale(dir, PAN_SPEED));
+    pan_velocity = Vector2Add(pan_velocity, Vector2Scale(delta, PAN_FACTOR_INERTIA));
+}
+
+void camera_update(float dt)
+{
+    camera.target = Vector2Add(camera.target, Vector2Scale(pan_velocity, dt));
     camera.target = Vector2Clamp(camera.target, Vector2Zero(), world_bounds());
+    pan_velocity = Vector2Scale(pan_velocity, PAN_FACTOR_DRAG);
 }

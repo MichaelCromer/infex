@@ -28,7 +28,7 @@ void draw_screen_game(struct State *state)
     DrawRectangle(0, 0, screen_width, screen_height, PURPLE);
     DrawText("In-Game", 20, 20, 40, MAROON);
 
-    BeginMode2D(camera_state());
+    BeginMode2D(*camera_state());
 
     draw_map();
 

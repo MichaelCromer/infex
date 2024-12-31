@@ -4,6 +4,8 @@
 
 void state_update(struct State *state)
 {
+    float dt = GetFrameTime();
+
     switch (state->screen_curr) {
         case INFEX_SCREEN_TITLE:
             if (IsKeyPressed(KEY_ENTER)) {
@@ -37,4 +39,6 @@ void state_update(struct State *state)
         default:
             break;
     }
+
+    camera_update(dt);
 }

@@ -8,10 +8,12 @@
 #include "infex.h"
 
 void world_initialise(size_t rows, size_t cols);
+void world_generate(void);
 size_t world_num_tiles(void);
 Vector2 *world_faces(void);
 uint8_t *world_heights(void);
 Vector2 world_centre(void);
 Vector2 world_bounds(void);
+float world_scale(void);
 
 #endif

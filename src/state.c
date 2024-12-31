@@ -10,7 +10,11 @@ void state_update(struct State *state)
         case INFEX_SCREEN_TITLE:
             if (IsKeyPressed(KEY_ENTER)) {
                 world_initialise(10, 10);
-                camera_offset((Vector2){state->screen_width_px/2.0f, state->screen_height_px/2.0f});
+                world_generate();
+                camera_offset((Vector2) {
+                              state->screen_width_px / 2.0f,
+                              state->screen_height_px / 2.0f}
+                );
                 state->screen_curr = INFEX_SCREEN_GAME;
             }
             break;
@@ -20,19 +24,27 @@ void state_update(struct State *state)
             }
 
             if (IsKeyDown(KEY_W)) {
-                camera_pan((Vector2){ 0.0f, -1.0f });
+                camera_pan((Vector2) {
+                           0.0f, -1.0f}
+                );
             }
 
             if (IsKeyDown(KEY_A)) {
-                camera_pan((Vector2){ -1.0f, 0.0f });
+                camera_pan((Vector2) {
+                           -1.0f, 0.0f}
+                );
             }
 
             if (IsKeyDown(KEY_S)) {
-                camera_pan((Vector2){ 0.0f, 1.0f });
+                camera_pan((Vector2) {
+                           0.0f, 1.0f}
+                );
             }
 
             if (IsKeyDown(KEY_D)) {
-                camera_pan((Vector2){ 1.0f, 0.0f });
+                camera_pan((Vector2) {
+                           1.0f, 0.0f}
+                );
             }
 
             break;

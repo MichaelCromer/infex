@@ -4,9 +4,9 @@
 #define PAN_FACTOR_INERTIA (128.0f)
 #define PAN_FACTOR_DRAG (0.9f)
 
-Camera2D camera = { 
-    .target =  { 0.0f, 0.0f },
-    .offset =  { 0.0f, 0.0f },
+Camera2D camera = {
+    .target = {0.0f, 0.0f},
+    .offset = {0.0f, 0.0f},
     .rotation = 0.0f,
     .zoom = 1.0f,
 };

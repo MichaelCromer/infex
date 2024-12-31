@@ -6,8 +6,9 @@ void draw_map(void)
 {
     Vector2 *face = world_faces();
     uint8_t *height = world_heights();
+    float scale = world_scale();
     for (size_t i = 0; i < world_num_tiles(); i++) {
-        DrawRectangle(face->x, face->y, 10, 10, (*height == 0) ? BLUE : GREEN);
+        DrawPoly(*face, 6, scale, 30.0f, (*height == 0) ? BLUE : GREEN);
         face++;
         height++;
     }

@@ -4,6 +4,8 @@
 #include <raylib.h>
 #include <raymath.h>
 
+#define INFEX_DEBUG
+
 enum INFEX_SCREEN {
     INFEX_SCREEN_NONE,
     INFEX_SCREEN_TITLE,

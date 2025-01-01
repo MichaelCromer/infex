@@ -19,6 +19,10 @@ void state_update(struct State *state)
             }
             break;
         case INFEX_SCREEN_GAME:
+            if (IsKeyPressed(KEY_ENTER)) {
+                state->screen_curr = INFEX_SCREEN_TITLE;
+            }
+
             if (IsKeyDown(KEY_W)) {
                 camera_pan((Vector2) { 0.0f, -1.0f});
             }

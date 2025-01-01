@@ -146,14 +146,63 @@ void world_generate_seismic(uint8_t dh, size_t n)
 void world_generate_erosion(void)
 {
     uint8_t *buf = malloc(num_tiles * sizeof(uint8_t));
-    float mean = 0;
-    size_t i = 0;
+    float mean = 0, 
+          n = 0;
+    bool odd_row = false;
     for (size_t r = 0; r < num_rows; r++) {
         for (size_t c = 0; c < num_cols; c++) {
-            mean = 0;
-            buf[i] = mean;
-            i++;
+            odd_row = (r % 2);
+            mean = heights[world_index(r, c)];
+            n = 1.0f;
+
+            if (r > 0) {
+                mean += heights[world_index(r - 1, c)];
+                n++;
+            }
+
+            if (r < num_rows - 1) {
+                mean += heights[world_index(r + 1, c)];
+                n++;
+            }
+
+            if (c > 0) {
+                mean += heights[world_index(r, c - 1)];
+                n++;
+            }
+
+            if (c < num_cols - 1) {
+                mean += heights[world_index(r, c + 1)];
+                n++;
+            }
+
+            if (odd_row && (c < num_cols - 1)) {
+                if (r > 0) {
+                    mean += heights[world_index(r - 1, c + 1)];
+                    n++;
+                }
+                if (r < num_rows - 1) {
+                    mean += heights[world_index(r + 1, c + 1)];
+                    n++;
+                }
+            } 
+
+            if (!odd_row && (c > 0)) {
+                if (r > 0) {
+                    mean += heights[world_index(r - 1, c - 1)];
+                    n++;
+                }
+                if (r < num_rows - 1) {
+                    mean += heights[world_index(r + 1, c - 1)];
+                    n++;
+                }
+            }
+
+            buf[world_index(r, c)] = mean / n;
         }
+    }
+
+    for (size_t i = 0; i < num_tiles; i++) {
+        heights[i] = buf[i];
     }
     free(buf);
 }
@@ -195,6 +244,7 @@ void world_generate(void)
 {
     world_clear();
     world_generate_seismic(8, 8);
+    world_generate_erosion();
     world_renormalise();
     world_calculate_colours();
 }

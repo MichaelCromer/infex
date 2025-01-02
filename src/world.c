@@ -4,22 +4,25 @@
 
 #include "include/world.h"
 
-#define MAX_U (64)
-#define MAX_V (64)
+#define MAX_C (64)
+#define MAX_R (64)
 #define MAX_H (8)
-#define MAX_TILES ((MAX_U) * (MAX_V))
-#define UV_SCALE (32)
+#define MAX_TILES ((MAX_C) * (MAX_R))
+#define MAX_VERTS (2 * ((MAX_R + 1) * (MAX_C + 1) - 1))
+#define TILE_EDGE_LENGTH (32)
 #define ROOT_3 (1.7320508f)
-#define DELTA_U (UV_SCALE * ROOT_3)
-#define DELTA_V (3.0f * UV_SCALE / 2.0f)
+#define DELTA_C (TILE_EDGE_LENGTH * ROOT_3)
+#define TILE_ASPECT_RATIO (0.67f)
+#define DELTA_R (3.0f * TILE_ASPECT_RATIO * TILE_EDGE_LENGTH / 2.0f)
 
 /* scalar function map data */
-Vector2 faces[MAX_TILES] = { 0 };       /* geometric locations on-screen of tile faces */
+Vector2 faces[MAX_TILES] = { 0 };       /* locations on-screen of tile faces */
+Vector2 vertices[MAX_VERTS] = { 0 };    /* locations on-screen of tile vertices */
 Color colours[MAX_TILES] = { 0 };       /* colours on-screen of tile faces */
 uint8_t heights[MAX_TILES] = { 0 };     /* heightmap of tiles */
 
 /* current state */
-size_t num_tiles = 0;
+size_t num_faces = 0, num_vertices = 0;
 size_t num_rows = 0, num_cols = 0;
 
 Vector2 centre = { 0 };
@@ -27,27 +30,53 @@ Vector2 bounds = { 0 };         /* lower bounds always 0, upper bounds given her
 
 void world_initialise(size_t rows, size_t cols)
 {
-    num_rows = rows, num_cols = cols;
-    num_tiles = rows * cols;
+    if ((cols > MAX_C) || (cols > MAX_R)) return;
 
-    float u = 0, v = 0;
-    int i = 0;
-    for (size_t r = 0; r < rows; r++) {
-        u = (r % 2) ? (DELTA_U / 2) : 0.0f;
-        for (size_t c = 0; c < cols; c++) {
-            faces[i] = (Vector2) {
-            u, v};
+    /* establish limits and other single constants */
+    num_rows = rows, num_cols = cols;
+    num_faces = rows * cols;
+    num_vertices = 2 * ((num_rows + 1) * (num_cols + 1) - 1);
+    bounds = (Vector2) { cols * DELTA_C, rows * DELTA_R };
+    centre = (Vector2) { bounds.x / 2.0f, bounds.y / 2.0f };
+
+    float u = 0, v = 0;     /* for current tile face positions */
+    size_t i = 0, j = 0;    /* for calculating face and vertex index positions */
+
+    /* calculate the geometric data */
+    for (size_t r = 0; r < num_rows; r++) {
+        u = (r % 2) ? (DELTA_C / 2) : 0.0f;
+
+        /* first (non-systematic) row of vertices */
+        if (r == 0) {
+            for (size_t c = 0; c < num_cols; c++) {
+                vertices[j++] = (Vector2) { u, v - (2 * DELTA_R / 3) };
+                u += DELTA_C;
+            }
+            u = (r % 2) ? (DELTA_C / 2) : 0.0f;
+        }
+
+        /* all the faces and the systematic vertices */
+        for (size_t c = 0; c < num_cols; c++) {
+            faces[i] = (Vector2) { u, v };
             heights[i] = 0;
-            u += DELTA_U;
+            vertices[j++] = (Vector2) { u - (DELTA_C / 2), v - (DELTA_R / 3) };
+            vertices[j++] = (Vector2) { u - (DELTA_C / 2), v + (DELTA_R / 3) };
+            u += DELTA_C;
             i++;
         }
-        v += DELTA_V;
-    }
+        vertices[j++] = (Vector2) { u - (DELTA_C / 2), v - (DELTA_R / 3) };
+        vertices[j++] = (Vector2) { u - (DELTA_C / 2), v + (DELTA_R / 3) };
 
-    bounds = (Vector2) {
-    cols *DELTA_U, rows * DELTA_V};
-    centre = (Vector2) {
-    bounds.x / 2.0f, bounds.y / 2.0f};
+        /* last (non-systematic) row of vertices */
+        if (r == num_rows - 1) {
+            u = (r % 2) ? (DELTA_C / 2) : 0.0f;
+            for (size_t c = 0; c < num_cols; c++) {
+                vertices[j++] = (Vector2) { u, v + (2 * DELTA_R / 3) };
+                u += DELTA_C;
+            }
+        }
+        v += DELTA_R;
+    }
 }
 
 size_t world_index(size_t r, size_t c)
@@ -65,9 +94,14 @@ size_t world_col(size_t i)
     return i % num_cols;
 }
 
-size_t world_num_tiles(void)
+size_t world_num_faces(void)
 {
-    return num_tiles;
+    return num_faces;
+}
+
+size_t world_num_vertices(void)
+{
+    return num_vertices;
 }
 
 size_t world_num_rows(void)
@@ -83,6 +117,11 @@ size_t world_num_cols(void)
 Vector2 *world_faces(void)
 {
     return faces;
+}
+
+Vector2 *world_vertices(void)
+{
+    return vertices;
 }
 
 Color *world_colours(void)
@@ -107,12 +146,12 @@ Vector2 world_bounds(void)
 
 float world_scale(void)
 {
-    return (float)UV_SCALE;
+    return (float)TILE_EDGE_LENGTH;
 }
 
 void world_clear(void)
 {
-    for (size_t i = 0; i < num_tiles; i++) {
+    for (size_t i = 0; i < num_faces; i++) {
         heights[i] = 0;
     }
 }
@@ -134,7 +173,7 @@ void world_generate_seismic(uint8_t dh, size_t n)
         cosf(angle), sinf(angle)};
         w = faces[world_index(r, c)];
 
-        for (size_t j = 0; j < num_tiles; j++) {
+        for (size_t j = 0; j < num_faces; j++) {
             if (Vector2DotProduct(v, Vector2Subtract(faces[j], w)) >= 0) {
                 heights[j] += dh;
             }
@@ -145,7 +184,7 @@ void world_generate_seismic(uint8_t dh, size_t n)
 
 void world_generate_erosion(void)
 {
-    uint8_t *buf = malloc(num_tiles * sizeof(uint8_t));
+    uint8_t *buf = malloc(num_faces * sizeof(uint8_t));
     float mean = 0, 
           n = 0;
     bool odd_row = false;
@@ -201,7 +240,7 @@ void world_generate_erosion(void)
         }
     }
 
-    for (size_t i = 0; i < num_tiles; i++) {
+    for (size_t i = 0; i < num_faces; i++) {
         heights[i] = buf[i];
     }
     free(buf);
@@ -211,7 +250,7 @@ void world_renormalise(void)
 {
     float max = 0.0f;
     float min = heights[0];
-    for (size_t i = 0; i < num_tiles; i++) {
+    for (size_t i = 0; i < num_faces; i++) {
         if (heights[i] > max) {
             max = (float)heights[i];
         }
@@ -221,7 +260,7 @@ void world_renormalise(void)
     }
 
     float factor = ((max - min) == 0) ? 0.0f : (MAX_H/(max - min));
-    for (size_t i = 0; i < num_tiles; i++) {
+    for (size_t i = 0; i < num_faces; i++) {
         heights[i] = floor((heights[i] - min)*factor);
     }
 }
@@ -231,7 +270,7 @@ void world_calculate_colours(void)
     Color c0 = { 49, 163, 84, 255 };
     Color c1 = { 114, 84, 40, 255 };
 
-    for (size_t i = 0; i < num_tiles; i++) {
+    for (size_t i = 0; i < num_faces; i++) {
         if (heights[i] == 0) {
             colours[i] = BLUE;
             continue;

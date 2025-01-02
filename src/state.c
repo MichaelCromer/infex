@@ -9,7 +9,7 @@ void state_update(struct State *state)
     switch (state->screen_curr) {
         case INFEX_SCREEN_TITLE:
             if (IsKeyPressed(KEY_ENTER)) {
-                world_initialise(20, 20);
+                world_initialise(32, 32);
                 world_generate();
                 camera_offset((Vector2) {
                               state->screen_width_px / 2.0f,

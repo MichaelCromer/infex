@@ -2,7 +2,7 @@
 #include "include/draw.h"
 #include "include/world.h"
 
-#ifdef INFEX_DEBUG
+#if INFEX_DEBUG == 1
 #include <stdio.h>
 #endif
 
@@ -11,21 +11,22 @@ void draw_map(void)
     Vector2 *faces = world_faces();
     Color *colours = world_colours();
     float scale = world_scale();
-    for (size_t i = 0; i < world_num_tiles(); i++) {
-        DrawPoly(faces[i], 6, scale, 30.0f, colours[i]);
-    }
-#ifdef INFEX_DEBUG
+#if INFEX_DEBUG == 1
+    Vector2 *vertices = world_vertices();
     char tmp[128] = { 0 };
-    size_t i = 0;
-    for (size_t r = 0; r < world_num_rows(); r++) {
-        for (size_t c = 0; c < world_num_cols(); c++) {
-            snprintf(tmp, 128, "(%lu, %lu)", r, c);
-            Vector2 pos = faces[i];
-            DrawText(tmp, pos.x-10, pos.y-10, 12, RED);
-            snprintf(tmp, 128, "(%lu, %lu)", world_row(i), world_col(i));
-            DrawText(tmp, pos.x-10, pos.y, 12, RED);
-            i++;
-        }
+#endif
+    for (size_t i = 0; i < world_num_faces(); i++) {
+        DrawPoly(faces[i], 6, scale, 30.0f, colours[i]);
+#if INFEX_DEBUG == 1
+        Vector2 pos = faces[i];
+        snprintf(tmp, 128, "(%lu, %lu)", world_row(i), world_col(i));
+        DrawText(tmp, pos.x-20, pos.y-10, 12, RED);
+#endif
+    }
+
+#if INFEX_DEBUG == 1
+    for (size_t j = 0; j < world_num_vertices(); j++) {
+        DrawCircleV(vertices[j], 3, BLACK);
     }
 #endif
 }

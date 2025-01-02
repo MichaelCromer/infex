@@ -4,7 +4,7 @@
 #include <raylib.h>
 #include <raymath.h>
 
-#define INFEX_DEBUG
+#define INFEX_DEBUG 1
 
 enum INFEX_SCREEN {
     INFEX_SCREEN_NONE,

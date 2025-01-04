@@ -2,6 +2,8 @@
 #include "include/infex.h"
 #include "include/world.h"
 
+#define MOUSE_FACE_THRESHOLD (0.67f)
+
 Vector2 mouse = { 0 };
 size_t closest_face = 0;
 size_t closest_vertex = 0;
@@ -25,7 +27,7 @@ void mouse_update(float dt)
 
     Vector2 *faces = world_faces();
     for (size_t i = 0; i < world_num_faces(); i++) {
-        if (Vector2Distance(mouse, faces[i]) < 0.67f * world_scale()) {
+        if (Vector2Distance(mouse, faces[i]) < MOUSE_FACE_THRESHOLD * world_scale()) {
             closest_face = i;
             break;
         }

@@ -1,7 +1,5 @@
-#include "include/camera.h"
 #include "include/draw.h"
-#include "include/mouse.h"
-#include "include/world.h"
+#include "include/infex.h"
 
 #if INFEX_DEBUG == 1
 #include <stdio.h>

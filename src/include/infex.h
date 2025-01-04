@@ -4,6 +4,10 @@
 #include <raylib.h>
 #include <raymath.h>
 
+#include "camera.h"
+#include "mouse.h"
+#include "world.h"
+
 #define INFEX_DEBUG 0
 
 enum INFEX_SCREEN {

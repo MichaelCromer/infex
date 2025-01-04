@@ -1,5 +1,4 @@
-#include "include/camera.h"
-#include "include/world.h"
+#include "include/infex.h"
 
 #define PAN_FACTOR_INERTIA (128.0f)
 #define PAN_FACTOR_DRAG (0.9f)

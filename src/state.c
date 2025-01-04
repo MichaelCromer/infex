@@ -1,7 +1,5 @@
-#include "include/camera.h"
-#include "include/mouse.h"
+#include "include/infex.h"
 #include "include/state.h"
-#include "include/world.h"
 
 void state_update(struct State *state)
 {

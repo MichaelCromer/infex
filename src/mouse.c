@@ -1,6 +1,4 @@
-#include "include/camera.h"
 #include "include/infex.h"
-#include "include/world.h"
 
 #define MOUSE_FACE_THRESHOLD (0.67f)
 

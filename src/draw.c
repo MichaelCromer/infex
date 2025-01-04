@@ -1,5 +1,6 @@
 #include "include/camera.h"
 #include "include/draw.h"
+#include "include/mouse.h"
 #include "include/world.h"
 
 #if INFEX_DEBUG == 1
@@ -11,20 +12,25 @@ void draw_map(void)
     Vector2 *faces = world_faces();
     Color *colours = world_colours();
     float scale = world_scale();
+
 #if INFEX_DEBUG == 1
     Vector2 *vertices = world_vertices();
     char tmp[128] = { 0 };
 #endif
+
     for (size_t i = 0; i < world_num_faces(); i++) {
         DrawPoly(faces[i], 6, scale, 30.0f, colours[i]);
+
 #if INFEX_DEBUG == 1
         Vector2 pos = faces[i];
         snprintf(tmp, 128, "(%lu, %lu)", world_row(i), world_col(i));
         DrawText(tmp, pos.x-20, pos.y-10, 12, RED);
 #endif
+
     }
 
 #if INFEX_DEBUG == 1
+    DrawPoly(faces[mouse_face()], 6, scale / 2, 30.0f, RED);
     for (size_t j = 0; j < world_num_vertices(); j++) {
         DrawCircleV(vertices[j], 3, BLACK);
     }

@@ -1,4 +1,5 @@
 #include "include/camera.h"
+#include "include/mouse.h"
 #include "include/state.h"
 #include "include/world.h"
 
@@ -11,7 +12,7 @@ void state_update(struct State *state)
             if (IsKeyPressed(KEY_ENTER)) {
                 world_initialise(32, 32);
                 world_generate();
-                camera_offset((Vector2) {
+                camera_set_offset((Vector2) {
                               state->screen_width_px / 2.0f,
                               state->screen_height_px / 2.0f}
                 );
@@ -45,4 +46,5 @@ void state_update(struct State *state)
     }
 
     camera_update(dt);
+    mouse_update(dt);
 }

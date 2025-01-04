@@ -18,9 +18,14 @@ const Camera2D *camera_state()
     return (const Camera2D *)&camera;
 }
 
-void camera_offset(Vector2 offset)
+void camera_set_offset(Vector2 offset)
 {
     camera.offset = offset;
+}
+
+Vector2 camera_position(void)
+{
+    return Vector2Subtract(camera.target, camera.offset);
 }
 
 void camera_goto(Vector2 target)

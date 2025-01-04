@@ -9,10 +9,10 @@
 #define MAX_H (8)
 #define MAX_TILES ((MAX_C) * (MAX_R))
 #define MAX_VERTS (2 * ((MAX_R + 1) * (MAX_C + 1) - 1))
-#define TILE_EDGE_LENGTH (32)
+#define TILE_EDGE_LENGTH (16)
 #define ROOT_3 (1.7320508f)
 #define DELTA_C (TILE_EDGE_LENGTH * ROOT_3)
-#define TILE_ASPECT_RATIO (0.67f)
+#define TILE_ASPECT_RATIO (1.0f)
 #define DELTA_R (3.0f * TILE_ASPECT_RATIO * TILE_EDGE_LENGTH / 2.0f)
 
 /* scalar function map data */
@@ -134,6 +134,16 @@ uint8_t *world_heights(void)
     return heights;
 }
 
+uint8_t world_height_rc(size_t r, size_t c)
+{
+    return heights[world_index(r, c)];
+}
+
+uint8_t world_height(size_t i)
+{
+    return heights[i];
+}
+
 Vector2 world_centre(void)
 {
     return centre;
@@ -182,68 +192,70 @@ void world_generate_seismic(uint8_t dh, size_t n)
     world_generate_seismic(dh / 2, n * 2);
 }
 
+size_t world_num_neighbours(size_t i)
+{
+    size_t r = world_row(i);
+    size_t c = world_col(i);
+    bool odd_row = (r % 2);
+
+    if ((r == 0) || (r == num_rows - 1)) {
+        if (c == 0) {
+            return (odd_row) ? 3 : 2;
+        } else if (c == (num_cols - 1)) {
+            return (odd_row) ? 2 : 3;
+        } else {
+            return 4;
+        }
+    }
+
+    if (c == 0) {
+        return (odd_row) ? 5 : 3;
+    } else if (c == (num_cols - 1)) {
+        return (odd_row) ? 3 : 5;
+    } else {
+        return 6;
+    }
+}
+
 void world_generate_erosion(void)
 {
-    uint8_t *buf = malloc(num_faces * sizeof(uint8_t));
-    float mean = 0, 
-          n = 0;
+    float buf[MAX_TILES] = { 0 };
     bool odd_row = false;
+    size_t i = 0;
+
     for (size_t r = 0; r < num_rows; r++) {
+        odd_row = (r % 2);
+
         for (size_t c = 0; c < num_cols; c++) {
-            odd_row = (r % 2);
-            mean = heights[world_index(r, c)];
-            n = 1.0f;
+            buf[i] += world_height(i);
 
-            if (r > 0) {
-                mean += heights[world_index(r - 1, c)];
-                n++;
+            if (c < (num_cols - 1)) {
+                buf[i] += world_height(i + 1);
+                buf[i + 1] += world_height(i);
             }
 
-            if (r < num_rows - 1) {
-                mean += heights[world_index(r + 1, c)];
-                n++;
-            }
+            if (r < (num_rows - 1)) {
+                buf[i] += world_height(i + num_cols);
+                buf[i + num_cols] += world_height(i);
 
-            if (c > 0) {
-                mean += heights[world_index(r, c - 1)];
-                n++;
-            }
-
-            if (c < num_cols - 1) {
-                mean += heights[world_index(r, c + 1)];
-                n++;
-            }
-
-            if (odd_row && (c < num_cols - 1)) {
-                if (r > 0) {
-                    mean += heights[world_index(r - 1, c + 1)];
-                    n++;
+                if (odd_row && (c < (num_cols - 1))) {
+                    buf[i] += world_height(i + num_cols + 1);
+                    buf[i + num_cols + 1] += world_height(i);
                 }
-                if (r < num_rows - 1) {
-                    mean += heights[world_index(r + 1, c + 1)];
-                    n++;
-                }
-            } 
 
-            if (!odd_row && (c > 0)) {
-                if (r > 0) {
-                    mean += heights[world_index(r - 1, c - 1)];
-                    n++;
-                }
-                if (r < num_rows - 1) {
-                    mean += heights[world_index(r + 1, c - 1)];
-                    n++;
+                if (!odd_row && (c > 0)) {
+                    buf[i] += world_height(i + num_cols - 1);
+                    buf[i + num_cols - 1] += world_height(i);
                 }
             }
 
-            buf[world_index(r, c)] = mean / n;
+            i++;
         }
     }
 
     for (size_t i = 0; i < num_faces; i++) {
-        heights[i] = buf[i];
+        heights[i] = buf[i] / (1.0f + world_num_neighbours(i));
     }
-    free(buf);
 }
 
 void world_renormalise(void)

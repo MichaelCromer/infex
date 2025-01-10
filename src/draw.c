@@ -5,6 +5,21 @@
 #include <stdio.h>
 #endif
 
+void draw_enemy(void)
+{
+    float *enemy = enemy_state();
+    Vector2 *faces = world_faces();
+    float scale = world_scale();
+    for (size_t i = 0; i < world_num_faces(); i++) {
+        if (FloatEquals(enemy[i], 0.0f)) {
+            continue;
+        }
+        Color colour = (Color) { 255, 0, 0, (int) (255 * (enemy[i] / MAX_H)) };
+        colour = RED;
+        DrawPoly(faces[i], 6, scale - 6, 30.0f, colour);
+    }
+}
+
 void draw_map(void)
 {
     Vector2 *faces = world_faces();
@@ -53,6 +68,7 @@ void draw_screen_game(struct State *state)
     BeginMode2D(*camera_state());
 
     draw_map();
+    draw_enemy();
 
     EndMode2D();
 }

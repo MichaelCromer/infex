@@ -2,20 +2,31 @@
 #include <stdlib.h>
 #include <string.h>
 
-#include "include/world.h"
+#include "include/infex.h"
 
-/* scalar function map data */
+/***************************************************************************************
+ * DATA
+ */
+
+/* Geometry     */
 Vector2 faces[MAX_TILES] = { 0 };       /* locations on-screen of tile faces */
 Vector2 vertices[MAX_VERTS] = { 0 };    /* locations on-screen of tile vertices */
-Color colours[MAX_TILES] = { 0 };       /* colours on-screen of tile faces */
-uint8_t heights[MAX_TILES] = { 0 };     /* heightmap of tiles */
-
-/* current state */
-size_t num_faces = 0, num_vertices = 0;
-size_t num_rows = 0, num_cols = 0;
-
 Vector2 centre = { 0 };
 Vector2 bounds = { 0 };         /* lower bounds always 0, upper bounds given here */
+size_t num_faces = 0;
+size_t num_vertices = 0;
+size_t num_rows = 0;
+size_t num_cols = 0;
+
+/* Map          */
+uint8_t heights[MAX_TILES] = { 0 };
+Color colours[MAX_TILES] = { 0 };       /* colours on-screen of tile faces */
+
+/* Enemy        */
+float enemy[MAX_TILES] = { 0 };
+float e_tick = 0.0f;
+float e_score = 0.0f;
+
 
 void world_initialise(size_t rows, size_t cols)
 {
@@ -47,7 +58,6 @@ void world_initialise(size_t rows, size_t cols)
         /* all the faces and the systematic vertices */
         for (size_t c = 0; c < num_cols; c++) {
             faces[i] = (Vector2) { u, v };
-            heights[i] = 0;
             vertices[j++] = (Vector2) { u - (DELTA_C / 2), v - (DELTA_R / 3) };
             vertices[j++] = (Vector2) { u - (DELTA_C / 2), v + (DELTA_R / 3) };
             u += DELTA_C;
@@ -103,6 +113,31 @@ size_t world_num_cols(void)
     return num_cols;
 }
 
+size_t world_num_neighbours(size_t i)
+{
+    size_t r = world_row(i);
+    size_t c = world_col(i);
+    bool odd_row = (r % 2);
+
+    if ((r == 0) || (r == (num_rows - 1))) {
+        if (c == 0) {
+            return (odd_row) ? 3 : 2;
+        } else if (c == (num_cols - 1)) {
+            return (odd_row) ? 2 : 3;
+        } else {
+            return 4;
+        }
+    }
+
+    if (c == 0) {
+        return (odd_row) ? 5 : 3;
+    } else if (c == (num_cols - 1)) {
+        return (odd_row) ? 3 : 5;
+    } else {
+        return 6;
+    }
+}
+
 Vector2 *world_faces(void)
 {
     return faces;
@@ -116,21 +151,6 @@ Vector2 *world_vertices(void)
 Color *world_colours(void)
 {
     return colours;
-}
-
-uint8_t *world_heights(void)
-{
-    return heights;
-}
-
-uint8_t world_height_rc(size_t r, size_t c)
-{
-    return heights[world_index(r, c)];
-}
-
-uint8_t world_height(size_t i)
-{
-    return heights[i];
 }
 
 Vector2 world_centre(void)
@@ -155,11 +175,29 @@ void world_clear(void)
     }
 }
 
-void world_generate_seismic(uint8_t dh, size_t n)
+
+/***************************************************************************************
+ *
+ * MAP
+ *
+ *
+ */
+
+
+uint8_t *map_heights(void)
+{
+    return heights;
+}
+
+uint8_t map_height(size_t i)
+{
+    return heights[i];
+}
+
+void mapgen_seismic(uint8_t dh, size_t n)
 {
     /* base case return */
-    if (n <= 0 || dh <= 0)
-        return;
+    if (n <= 0 || dh <= 0) return;
 
     /* n random seismic events at magnigute dh */
     int angle = 0, r = 0, c = 0;
@@ -178,35 +216,10 @@ void world_generate_seismic(uint8_t dh, size_t n)
             }
         }
     }
-    world_generate_seismic(dh / 2, n * 2);
+    mapgen_seismic(dh / 2, n * 2);
 }
 
-size_t world_num_neighbours(size_t i)
-{
-    size_t r = world_row(i);
-    size_t c = world_col(i);
-    bool odd_row = (r % 2);
-
-    if ((r == 0) || (r == num_rows - 1)) {
-        if (c == 0) {
-            return (odd_row) ? 3 : 2;
-        } else if (c == (num_cols - 1)) {
-            return (odd_row) ? 2 : 3;
-        } else {
-            return 4;
-        }
-    }
-
-    if (c == 0) {
-        return (odd_row) ? 5 : 3;
-    } else if (c == (num_cols - 1)) {
-        return (odd_row) ? 3 : 5;
-    } else {
-        return 6;
-    }
-}
-
-void world_generate_erosion(void)
+void mapgen_erosion(void)
 {
     float buf[MAX_TILES] = { 0 };
     bool odd_row = false;
@@ -216,25 +229,23 @@ void world_generate_erosion(void)
         odd_row = (r % 2);
 
         for (size_t c = 0; c < num_cols; c++) {
-            buf[i] += world_height(i);
+            buf[i] += heights[i];
 
             if (c < (num_cols - 1)) {
-                buf[i] += world_height(i + 1);
-                buf[i + 1] += world_height(i);
+                buf[i] += heights[i + 1];
+                buf[i + 1] += heights[i];
             }
 
             if (r < (num_rows - 1)) {
-                buf[i] += world_height(i + num_cols);
-                buf[i + num_cols] += world_height(i);
+                buf[i] += heights[i + num_cols];
+                buf[i + num_cols] += heights[i];
 
-                if (odd_row && (c < (num_cols - 1))) {
-                    buf[i] += world_height(i + num_cols + 1);
-                    buf[i + num_cols + 1] += world_height(i);
-                }
-
-                if (!odd_row && (c > 0)) {
-                    buf[i] += world_height(i + num_cols - 1);
-                    buf[i + num_cols - 1] += world_height(i);
+                if (odd_row && (c < (num_cols -1))) {
+                    buf[i] += heights[i + num_cols + 1];
+                    buf[i + num_cols + 1] += heights[i];
+                } else if (!odd_row && (c > 0)) {
+                    buf[i] += heights[i + num_cols - 1];
+                    buf[i + num_cols - 1] += heights[i];
                 }
             }
 
@@ -247,7 +258,7 @@ void world_generate_erosion(void)
     }
 }
 
-void world_renormalise(void)
+void map_renormalise(void)
 {
     float max = 0.0f;
     float min = heights[0];
@@ -279,12 +290,138 @@ void world_calculate_colours(void)
         colours[i] = ColorLerp(c0, c1, heights[i] / (1.0f * MAX_H));
     }
 }
+/***************************************************************************************
+ *
+ * ENEMY
+ *
+ *
+ */
+
+float *enemy_state(void)
+{
+    return enemy;
+}
+
+float enemy_score(void)
+{
+    return e_score;
+}
+
+void enemy_set(size_t i, float val)
+{
+    enemy[i] = val;
+}
+
+float enemy_height(size_t i)
+{
+    return (enemy[i] + heights[i]);
+}
+
+float enemy_delta(size_t i, size_t j)
+{
+    return (enemy_height(i) - enemy_height(j));
+}
+
+void enemy_initialise()
+{
+    for (size_t i = 0; i < num_faces; i++) {
+        enemy[i] = 0.0f;
+    }
+    enemy_set(0, 0.1f); /* TODO this is just for testing */
+}
+
+void enemy_grow(size_t i)
+{
+    if (enemy[i] < ENEMY_GROW_THRESHOLD) {
+        enemy[i] /= 2;
+        return;
+    }
+
+    float growth = (ENEMY_GROW_FACTOR * enemy[i]);
+    enemy[i] += (growth < ENEMY_GROW_MAX) ? growth : ENEMY_GROW_MAX;
+}
+
+/* enemy balances out existing tiles
+ * enemy splits to vacant tiles 
+ * */
+void enemy_flow(size_t i, size_t j)
+{
+    /* early exit if nothing to do */
+    if (FloatEquals(enemy[i], 0.0f) && FloatEquals(enemy[j], 0.0f)) return;
+
+    /* figure out the relevant flow/split case */
+    float threshold = (FloatEquals(enemy[i], 0.0f) || FloatEquals(enemy[j], 0.0f))
+        ? ENEMY_SPLIT_THRESHOLD
+        : ENEMY_LEVEL_THRESHOLD;
+
+    /* get the actual diff in height and early exit if need to */
+    float dh = enemy_delta(i, j);
+    if (dh < threshold) return;
+
+    /* figure out the direction of flow */
+    size_t src = (dh > 0) ? i : j;
+    size_t snk = (src == j) ? i : j;
+
+    /* do the flow, accounting for case of not having enough to supply all of dh */
+    dh = (dh < enemy[src]) ? dh : enemy[src];
+    enemy[src] -= dh / 2.0f;
+    enemy[snk] += dh / 2.0f;
+}
+
+void enemy_update(float dt)
+{
+    e_score = 0.0f;
+    e_tick += dt;
+
+    if (e_tick < ENEMY_UPDATE_INTERVAL) return;
+
+    size_t i = 0;
+    for (size_t r = 0; r < world_num_rows(); r++) {
+        for (size_t c = 0; c < world_num_cols(); c++) {
+            enemy_grow(i);
+            e_score += enemy[i];
+
+            if (c > 0) {
+                enemy_flow(i, i - 1);
+            }
+
+            if (c < (num_cols - 1)) {
+                enemy_flow(i, i + 1);
+            }
+
+            if (r > 0) {
+                enemy_flow(i, i - num_cols);
+            }
+
+            if (r < (num_rows - 1)) {
+                enemy_flow(i, i + num_cols);
+            }
+
+            i++;
+        }
+    }
+
+    e_tick -= ENEMY_UPDATE_INTERVAL;
+}
+
+
+/***************************************************************************************
+ * WORLD
+ */
+
 
 void world_generate(void)
 {
     world_clear();
-    world_generate_seismic(8, 8);
-    world_generate_erosion();
-    world_renormalise();
+    mapgen_seismic(8, 8);
+    mapgen_erosion();
+    map_renormalise();
     world_calculate_colours();
+    enemy_initialise();
 }
+
+void world_update(float dt)
+{
+    enemy_update(dt);
+}
+

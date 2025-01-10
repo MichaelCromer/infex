@@ -45,4 +45,5 @@ void state_update(struct State *state)
 
     camera_update(dt);
     mouse_update(dt);
+    world_update(dt);
 }

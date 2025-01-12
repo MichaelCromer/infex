@@ -1,3 +1,6 @@
 [submodule "raylib"]
 	path = src/lib/raylib
 	url = https://github.com/raysan5/raylib.git
+[submodule "clay"]
+	path = src/lib/clay
+	url = https://github.com/nicbarker/clay.git

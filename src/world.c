@@ -11,8 +11,9 @@
 /* Geometry     */
 Vector2 faces[MAX_TILES] = { 0 };       /* locations on-screen of tile faces */
 Vector2 vertices[MAX_VERTS] = { 0 };    /* locations on-screen of tile vertices */
-Vector2 centre = { 0 };
-Vector2 bounds = { 0 };         /* lower bounds always 0, upper bounds given here */
+Vector2 centre = { 0 };                 /* geometric centre of grid on-screen */
+Vector2 bounds = { 0 };                 /* upper bounds of coordinates on-screen */
+
 size_t num_faces = 0;
 size_t num_vertices = 0;
 size_t num_rows = 0;
@@ -27,15 +28,50 @@ float enemy[MAX_TILES] = { 0 };
 float e_tick = 0.0f;
 float e_score = 0.0f;
 
+/* Player       */
 
-void world_initialise(size_t rows, size_t cols)
+/* Player - Resource */
+typedef enum {
+    RESOURCE_POWER = 0,
+    RESOURCE_MINERAL,
+    RESOURCE_ORGANIC,
+} RESOURCE;
+
+typedef float Resource[3];
+
+/* Player - Building */
+typedef enum {
+    BUILDING_NONE,
+    BUILDING_COMMAND_CENTRE,
+    BUILDING_GENERATOR_POWER,
+    BUILDING_GENERATOR_MINERAL,
+    BUILDING_GENERATOR_ORGANIC,
+    BUILDING_STORAGE_POWER,
+    BUILDING_STORAGE_MINERAL,
+    BUILDING_STORAGE_ORGANIC
+} BUILDING;
+
+typedef struct {
+    BUILDING type;
+    size_t position;
+} Building;
+
+Building *buildings[MAX_TILES];         /* for tracking all owned tiles */
+
+/***************************************************************************************
+ * GRID
+ */
+
+void grid_initialise(size_t rows, size_t cols)
 {
     if ((cols > MAX_C) || (cols > MAX_R)) return;
 
     /* establish limits and other single constants */
-    num_rows = rows, num_cols = cols;
+    num_rows = rows; 
+    num_cols = cols;
     num_faces = rows * cols;
     num_vertices = 2 * ((num_rows + 1) * (num_cols + 1) - 1);
+
     bounds = (Vector2) { cols * DELTA_C, rows * DELTA_R };
     centre = (Vector2) { bounds.x / 2.0f, bounds.y / 2.0f };
 
@@ -78,45 +114,28 @@ void world_initialise(size_t rows, size_t cols)
     }
 }
 
-size_t world_index(size_t r, size_t c)
+size_t grid_index(size_t r, size_t c)
 {
     return (num_cols*r) + c;
 }
 
-size_t world_row(size_t i)
+size_t grid_row(size_t i)
 {
     return i / num_cols;
 }
 
-size_t world_col(size_t i)
+size_t grid_col(size_t i)
 {
     return i % num_cols;
 }
 
-size_t world_num_faces(void)
+size_t grid_size(void)
 {
     return num_faces;
 }
 
-size_t world_num_vertices(void)
+size_t grid_num_neighbours(size_t r, size_t c)
 {
-    return num_vertices;
-}
-
-size_t world_num_rows(void)
-{
-    return num_rows;
-}
-
-size_t world_num_cols(void)
-{
-    return num_cols;
-}
-
-size_t world_num_neighbours(size_t i)
-{
-    size_t r = world_row(i);
-    size_t c = world_col(i);
     bool odd_row = (r % 2);
 
     if ((r == 0) || (r == (num_rows - 1))) {
@@ -168,19 +187,9 @@ float world_scale(void)
     return (float)TILE_EDGE_LENGTH;
 }
 
-void world_clear(void)
-{
-    for (size_t i = 0; i < num_faces; i++) {
-        heights[i] = 0;
-    }
-}
-
 
 /***************************************************************************************
- *
  * MAP
- *
- *
  */
 
 
@@ -193,6 +202,12 @@ uint8_t map_height(size_t i)
 {
     return heights[i];
 }
+
+
+/***************************************************************************************
+ * MAPGEN
+ */
+
 
 void mapgen_seismic(uint8_t dh, size_t n)
 {
@@ -208,7 +223,7 @@ void mapgen_seismic(uint8_t dh, size_t n)
         c = GetRandomValue(0, num_cols - 1);
         v = (Vector2) {
         cosf(angle), sinf(angle)};
-        w = faces[world_index(r, c)];
+        w = faces[grid_index(r, c)];
 
         for (size_t j = 0; j < num_faces; j++) {
             if (Vector2DotProduct(v, Vector2Subtract(faces[j], w)) >= 0) {
@@ -253,12 +268,16 @@ void mapgen_erosion(void)
         }
     }
 
-    for (size_t i = 0; i < num_faces; i++) {
-        heights[i] = buf[i] / (1.0f + world_num_neighbours(i));
+    i = 0;
+    for (size_t r = 0; r < num_rows; r++) {
+        for (size_t c = 0; c < num_cols; c++) {
+            heights[i] = buf[i] / (1.0f + grid_num_neighbours(r, c));
+            i++;
+        }
     }
 }
 
-void map_renormalise(void)
+void mapgen_renormalise(void)
 {
     float max = 0.0f;
     float min = heights[0];
@@ -277,7 +296,7 @@ void map_renormalise(void)
     }
 }
 
-void world_calculate_colours(void)
+void mapgen_colourset(void)
 {
     Color c0 = { 49, 163, 84, 255 };
     Color c1 = { 114, 84, 40, 255 };
@@ -290,12 +309,12 @@ void world_calculate_colours(void)
         colours[i] = ColorLerp(c0, c1, heights[i] / (1.0f * MAX_H));
     }
 }
+
+
 /***************************************************************************************
- *
  * ENEMY
- *
- *
  */
+
 
 float *enemy_state(void)
 {
@@ -368,16 +387,12 @@ void enemy_flow(size_t i, size_t j)
     enemy[snk] += dh / 2.0f;
 }
 
-void enemy_update(float dt)
+void enemy_update(void)
 {
     e_score = 0.0f;
-    e_tick += dt;
-
-    if (e_tick < ENEMY_UPDATE_INTERVAL) return;
-
     size_t i = 0;
-    for (size_t r = 0; r < world_num_rows(); r++) {
-        for (size_t c = 0; c < world_num_cols(); c++) {
+    for (size_t r = 0; r < num_rows; r++) {
+        for (size_t c = 0; c < num_cols; c++) {
             enemy_grow(i);
             e_score += enemy[i];
 
@@ -400,8 +415,6 @@ void enemy_update(float dt)
             i++;
         }
     }
-
-    e_tick -= ENEMY_UPDATE_INTERVAL;
 }
 
 
@@ -410,18 +423,36 @@ void enemy_update(float dt)
  */
 
 
+void world_initialise(size_t rows, size_t cols)
+{
+    grid_initialise(rows, cols);
+}
+
+
+void world_clear(void)
+{
+    for (size_t i = 0; i < num_faces; i++) {
+        heights[i] = 0;
+        enemy[i] = 0;
+    }
+}
+
+
 void world_generate(void)
 {
     world_clear();
     mapgen_seismic(8, 8);
     mapgen_erosion();
-    map_renormalise();
-    world_calculate_colours();
+    mapgen_renormalise();
+    mapgen_colourset();
     enemy_initialise();
 }
 
 void world_update(float dt)
 {
-    enemy_update(dt);
+    e_tick += dt;
+    if (e_tick > ENEMY_UPDATE_INTERVAL) {
+        enemy_update();
+        e_tick -= ENEMY_UPDATE_INTERVAL;
+    }
 }
-

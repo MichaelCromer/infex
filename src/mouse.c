@@ -24,7 +24,7 @@ void mouse_update(float dt)
     mouse = Vector2Add(GetMousePosition(), camera_position());
 
     Vector2 *faces = world_faces();
-    for (size_t i = 0; i < world_num_faces(); i++) {
+    for (size_t i = 0; i < grid_size(); i++) {
         if (Vector2Distance(mouse, faces[i]) < MOUSE_FACE_THRESHOLD * world_scale()) {
             closest_face = i;
             break;

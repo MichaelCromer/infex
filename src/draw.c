@@ -10,7 +10,7 @@ void draw_enemy(void)
     float *enemy = enemy_state();
     Vector2 *faces = world_faces();
     float scale = world_scale();
-    for (size_t i = 0; i < world_num_faces(); i++) {
+    for (size_t i = 0; i < grid_size(); i++) {
         if (FloatEquals(enemy[i], 0.0f)) {
             continue;
         }
@@ -26,28 +26,15 @@ void draw_map(void)
     Color *colours = world_colours();
     float scale = world_scale();
 
-#if INFEX_DEBUG == 1
-    Vector2 *vertices = world_vertices();
-    char tmp[128] = { 0 };
-#endif
-
-    for (size_t i = 0; i < world_num_faces(); i++) {
+    for (size_t i = 0; i < grid_size(); i++) {
         DrawPoly(faces[i], 6, scale, 30.0f, colours[i]);
-
-#if INFEX_DEBUG == 1
-        Vector2 pos = faces[i];
-        snprintf(tmp, 128, "(%lu, %lu)", world_row(i), world_col(i));
-        DrawText(tmp, pos.x-20, pos.y-10, 12, RED);
-#endif
-
     }
+}
 
-#if INFEX_DEBUG == 1
-    DrawPoly(faces[mouse_face()], 6, scale / 2, 30.0f, RED);
-    for (size_t j = 0; j < world_num_vertices(); j++) {
-        DrawCircleV(vertices[j], 3, BLACK);
-    }
-#endif
+void draw_world(void)
+{
+    draw_map();
+    draw_enemy();
 }
 
 void draw_screen_title(struct State *state)
@@ -67,8 +54,7 @@ void draw_screen_game(struct State *state)
 
     BeginMode2D(*camera_state());
 
-    draw_map();
-    draw_enemy();
+    draw_world();
 
     EndMode2D();
 }

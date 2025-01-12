@@ -1,5 +1,5 @@
-#include "include/draw.h"
-#include "include/state.h"
+#include "hdr/draw.h"
+#include "hdr/state.h"
 
 int main(void)
 {

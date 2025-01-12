@@ -1,5 +1,5 @@
-#include "include/draw.h"
-#include "include/infex.h"
+#include "hdr/draw.h"
+#include "hdr/infex.h"
 
 #if INFEX_DEBUG == 1
 #include <stdio.h>

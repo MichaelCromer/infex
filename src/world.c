@@ -4,17 +4,43 @@
 
 #include "include/infex.h"
 
+
+/***************************************************************************************
+ * DEFINES
+ */
+
+
+#define MAX_C (64)
+#define MAX_R (64)
+#define MAX_H (8)
+#define MAX_TILES ((MAX_C) * (MAX_R))
+#define MAX_VERTS (2 * ((MAX_R + 1) * (MAX_C + 1) - 1))
+#define GRID_SCALE (16)
+#define ROOT_3 (1.7320508f)
+#define DELTA_C (GRID_SCALE * ROOT_3)
+#define TILE_ASPECT_RATIO (1.0f)
+#define DELTA_R (3.0f * TILE_ASPECT_RATIO * GRID_SCALE / 2.0f)
+
+#define ENEMY_UPDATE_INTERVAL (0.33f)   /* seconds between enemy updates    */
+#define ENEMY_GROW_MAX (0.05f)          /* maximum absolute increase        */
+#define ENEMY_GROW_FACTOR (0.01f)       /* fraction to increase by          */
+#define ENEMY_GROW_THRESHOLD (0.01f)    /* minimum value for growth         */
+#define ENEMY_SPLIT_THRESHOLD (0.90f)   /* minimum delta before split       */
+#define ENEMY_LEVEL_THRESHOLD (0.10f)   /* minimum delta before level flow  */
+
+
 /***************************************************************************************
  * DATA
  */
 
+
 /* Geometry     */
-Vector2 faces[MAX_TILES] = { 0 };       /* locations on-screen of tile faces */
+Vector2 centres[MAX_TILES] = { 0 };     /* locations on-screen of tile centres */
 Vector2 vertices[MAX_VERTS] = { 0 };    /* locations on-screen of tile vertices */
-Vector2 centre = { 0 };                 /* geometric centre of grid on-screen */
+Vector2 middle = { 0 };                 /* geometric middle of grid on-screen */
 Vector2 bounds = { 0 };                 /* upper bounds of coordinates on-screen */
 
-size_t num_faces = 0;
+size_t num_tiles = 0;
 size_t num_vertices = 0;
 size_t num_rows = 0;
 size_t num_cols = 0;
@@ -69,11 +95,11 @@ void grid_initialise(size_t rows, size_t cols)
     /* establish limits and other single constants */
     num_rows = rows; 
     num_cols = cols;
-    num_faces = rows * cols;
+    num_tiles = rows * cols;
     num_vertices = 2 * ((num_rows + 1) * (num_cols + 1) - 1);
 
     bounds = (Vector2) { cols * DELTA_C, rows * DELTA_R };
-    centre = (Vector2) { bounds.x / 2.0f, bounds.y / 2.0f };
+    middle = (Vector2) { bounds.x / 2.0f, bounds.y / 2.0f };
 
     float u = 0, v = 0;     /* for current tile face positions */
     size_t i = 0, j = 0;    /* for calculating face and vertex index positions */
@@ -93,7 +119,7 @@ void grid_initialise(size_t rows, size_t cols)
 
         /* all the faces and the systematic vertices */
         for (size_t c = 0; c < num_cols; c++) {
-            faces[i] = (Vector2) { u, v };
+            centres[i] = (Vector2) { u, v };
             vertices[j++] = (Vector2) { u - (DELTA_C / 2), v - (DELTA_R / 3) };
             vertices[j++] = (Vector2) { u - (DELTA_C / 2), v + (DELTA_R / 3) };
             u += DELTA_C;
@@ -131,7 +157,7 @@ size_t grid_col(size_t i)
 
 size_t grid_size(void)
 {
-    return num_faces;
+    return num_tiles;
 }
 
 size_t grid_num_neighbours(size_t r, size_t c)
@@ -157,34 +183,19 @@ size_t grid_num_neighbours(size_t r, size_t c)
     }
 }
 
-Vector2 *world_faces(void)
+Vector2 *grid_centres(void)
 {
-    return faces;
+    return centres;
 }
 
-Vector2 *world_vertices(void)
+Vector2 *grid_vertices(void)
 {
     return vertices;
 }
 
-Color *world_colours(void)
+float grid_scale(void)
 {
-    return colours;
-}
-
-Vector2 world_centre(void)
-{
-    return centre;
-}
-
-Vector2 world_bounds(void)
-{
-    return bounds;
-}
-
-float world_scale(void)
-{
-    return (float)TILE_EDGE_LENGTH;
+    return (float)GRID_SCALE;
 }
 
 
@@ -201,6 +212,11 @@ uint8_t *map_heights(void)
 uint8_t map_height(size_t i)
 {
     return heights[i];
+}
+
+Color *map_colours(void)
+{
+    return colours;
 }
 
 
@@ -223,10 +239,10 @@ void mapgen_seismic(uint8_t dh, size_t n)
         c = GetRandomValue(0, num_cols - 1);
         v = (Vector2) {
         cosf(angle), sinf(angle)};
-        w = faces[grid_index(r, c)];
+        w = centres[grid_index(r, c)];
 
-        for (size_t j = 0; j < num_faces; j++) {
-            if (Vector2DotProduct(v, Vector2Subtract(faces[j], w)) >= 0) {
+        for (size_t j = 0; j < grid_size(); j++) {
+            if (Vector2DotProduct(v, Vector2Subtract(centres[j], w)) >= 0) {
                 heights[j] += dh;
             }
         }
@@ -281,7 +297,7 @@ void mapgen_renormalise(void)
 {
     float max = 0.0f;
     float min = heights[0];
-    for (size_t i = 0; i < num_faces; i++) {
+    for (size_t i = 0; i < grid_size(); i++) {
         if (heights[i] > max) {
             max = (float)heights[i];
         }
@@ -291,7 +307,7 @@ void mapgen_renormalise(void)
     }
 
     float factor = ((max - min) == 0) ? 0.0f : (MAX_H/(max - min));
-    for (size_t i = 0; i < num_faces; i++) {
+    for (size_t i = 0; i < grid_size(); i++) {
         heights[i] = floor((heights[i] - min)*factor);
     }
 }
@@ -301,7 +317,7 @@ void mapgen_colourset(void)
     Color c0 = { 49, 163, 84, 255 };
     Color c1 = { 114, 84, 40, 255 };
 
-    for (size_t i = 0; i < num_faces; i++) {
+    for (size_t i = 0; i < grid_size(); i++) {
         if (heights[i] == 0) {
             colours[i] = BLUE;
             continue;
@@ -343,7 +359,7 @@ float enemy_delta(size_t i, size_t j)
 
 void enemy_initialise()
 {
-    for (size_t i = 0; i < num_faces; i++) {
+    for (size_t i = 0; i < grid_size(); i++) {
         enemy[i] = 0.0f;
     }
     enemy_set(0, 0.1f); /* TODO this is just for testing */
@@ -431,12 +447,21 @@ void world_initialise(size_t rows, size_t cols)
 
 void world_clear(void)
 {
-    for (size_t i = 0; i < num_faces; i++) {
+    for (size_t i = 0; i < grid_size(); i++) {
         heights[i] = 0;
         enemy[i] = 0;
     }
 }
 
+Vector2 world_middle(void)
+{
+    return middle;
+}
+
+Vector2 world_bounds(void)
+{
+    return bounds;
+}
 
 void world_generate(void)
 {

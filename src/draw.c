@@ -8,23 +8,22 @@
 void draw_enemy(void)
 {
     float *enemy = enemy_state();
-    Vector2 *faces = world_faces();
-    float scale = world_scale();
+    Vector2 *faces = grid_centres();
+    float scale = grid_scale();
     for (size_t i = 0; i < grid_size(); i++) {
         if (FloatEquals(enemy[i], 0.0f)) {
             continue;
         }
-        Color colour = (Color) { 255, 0, 0, (int) (255 * (enemy[i] / MAX_H)) };
-        colour = RED;
+        Color colour = RED;
         DrawPoly(faces[i], 6, scale - 6, 30.0f, colour);
     }
 }
 
 void draw_map(void)
 {
-    Vector2 *faces = world_faces();
-    Color *colours = world_colours();
-    float scale = world_scale();
+    Vector2 *faces = grid_centres();
+    Color *colours = map_colours();
+    float scale = grid_scale();
 
     for (size_t i = 0; i < grid_size(); i++) {
         DrawPoly(faces[i], 6, scale, 30.0f, colours[i]);
@@ -35,6 +34,18 @@ void draw_world(void)
 {
     draw_map();
     draw_enemy();
+}
+
+void draw_mouse(void)
+{
+    Vector2 *faces = grid_centres();
+    float scale = grid_scale();
+    DrawPoly(faces[mouse_face()], 6, scale/2, 30.0f, YELLOW);
+}
+
+void draw_interface(void)
+{
+    draw_mouse();
 }
 
 void draw_screen_title(struct State *state)
@@ -55,6 +66,7 @@ void draw_screen_game(struct State *state)
     BeginMode2D(*camera_state());
 
     draw_world();
+    draw_interface();
 
     EndMode2D();
 }

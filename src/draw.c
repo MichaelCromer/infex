@@ -1,5 +1,9 @@
+#include "hdr/camera.h"
 #include "hdr/draw.h"
 #include "hdr/infex.h"
+#include "hdr/interface.h"
+#include "hdr/mouse.h"
+#include "hdr/world.h"
 
 #if INFEX_DEBUG == 1
 #include <stdio.h>
@@ -38,61 +42,58 @@ void draw_world(void)
 
 void draw_mouse(void)
 {
-    Vector2 *faces = grid_centres();
-    float scale = grid_scale();
-    DrawPoly(faces[mouse_face()], 6, scale/2, 30.0f, YELLOW);
+    if (mouse_track_face()) {
+        Vector2 *faces = grid_centres();
+        float scale = grid_scale();
+        DrawPoly(faces[mouse_face()], 6, scale/2, 30.0f, YELLOW);
+    }
 }
 
 void draw_interface(void)
 {
+    interface_render();
     draw_mouse();
 }
 
-void draw_screen_title(struct State *state)
+void draw_screen_title(void)
 {
-    unsigned int screen_width = state->screen_width_px,
-        screen_height = state->screen_height_px;
-    DrawRectangle(0, 0, screen_width, screen_height, GREEN);
-    DrawText("Title Screen", 20, 20, 40, DARKGREEN);
+    draw_interface();
 }
 
-void draw_screen_game(struct State *state)
+void draw_screen_game(void)
 {
-    unsigned int screen_width = state->screen_width_px,
-        screen_height = state->screen_height_px;
-    DrawRectangle(0, 0, screen_width, screen_height, PURPLE);
+    DrawRectangle(0, 0, screen_width(), screen_height(), PURPLE);
     DrawText("In-Game", 20, 20, 40, MAROON);
 
     BeginMode2D(*camera_state());
-
     draw_world();
-    draw_interface();
+    EndMode2D();
 
+    BeginMode2D((Camera2D) { 0 });
+    draw_interface();
     EndMode2D();
 }
 
-void draw_screen_none(struct State *state)
+void draw_screen_none(void)
 {
-    unsigned int screen_width = state->screen_width_px,
-        screen_height = state->screen_height_px;
-    DrawRectangle(0, 0, screen_width, screen_height, LIGHTGRAY);
+    DrawRectangle(0, 0, screen_width(), screen_height(), LIGHTGRAY);
     DrawText("NULL Screen", 20, 20, 40, GRAY);
 }
 
-void draw_screen(struct State *state)
+void draw_screen(void)
 {
     BeginDrawing();
     ClearBackground(RAYWHITE);
 
-    switch (state->screen_curr) {
+    switch (screen_curr()) {
         case INFEX_SCREEN_TITLE:
-            draw_screen_title(state);
+            draw_screen_title();
             break;
         case INFEX_SCREEN_GAME:
-            draw_screen_game(state);
+            draw_screen_game();
             break;
         default:
-            draw_screen_none(state);
+            draw_screen_none();
             break;
     }
 

@@ -3,11 +3,11 @@
 
 #include "infex.h"
 
-struct State {
-    enum INFEX_SCREEN screen_curr;
-    unsigned int screen_width_px, screen_height_px;
-};
+enum INFEX_SCREEN screen_curr(void);
+unsigned int screen_width(void);
+unsigned int screen_height(void);
 
-void state_update(struct State *state);
+void state_initialise(void);
+void state_update(void);
 
 #endif

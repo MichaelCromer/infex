@@ -3,17 +3,13 @@
 
 int main(void)
 {
-    struct State state = {
-        .screen_curr = INFEX_SCREEN_TITLE,
-        .screen_width_px = 800,
-        .screen_height_px = 450,
-    };
+    state_initialise();
 
-    InitWindow(state.screen_width_px, state.screen_height_px, "Infex");
+    InitWindow(screen_width(), screen_height(), "Infex");
 
     while (!WindowShouldClose()) {
-        draw_screen(&state);
-        state_update(&state);
+        draw_screen();
+        state_update();
     }
 
     CloseWindow();

@@ -1,8 +1,4 @@
-#include <math.h>
-#include <stdlib.h>
-#include <string.h>
-
-#include "include/infex.h"
+#include "hdr/infex.h"
 
 
 /***************************************************************************************

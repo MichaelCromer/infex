@@ -30,4 +30,4 @@ format:
 
 tags:
 	rm -rf tags
-	ctags $(SRC) $(HDR) $(LIBDIR)/clay/clay.h
+	ctags $(SRC) $(HDR) $(LIBDIR)/clay/clay.h $(LIBDIR)/clay/renderers/raylib/*.c

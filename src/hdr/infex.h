@@ -1,12 +1,13 @@
 #ifndef INFEX_H
 #define INFEX_H
 
+#include <math.h>
 #include <raylib.h>
 #include <raymath.h>
-
-#include "camera.h"
-#include "mouse.h"
-#include "world.h"
+#include <stddef.h>
+#include <stdint.h>
+#include <stdlib.h>
+#include <string.h>
 
 #define INFEX_DEBUG 0
 

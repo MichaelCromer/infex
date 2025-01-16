@@ -3,13 +3,13 @@
 
 int main(void)
 {
-    state_initialise();
-
     InitWindow(screen_width(), screen_height(), "Infex");
 
+    state_initialise();
+
     while (!WindowShouldClose()) {
-        draw_screen();
         state_update();
+        draw_screen();
     }
 
     CloseWindow();

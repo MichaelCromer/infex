@@ -19,7 +19,7 @@ uint64_t memory = 0;
 Clay_Arena arena = { 0 };
 Clay_Dimensions dimensions = { 0 };
 
-Clay_RenderCommandArray (*interface_renderer)(float dt) = NULL;
+Clay_RenderCommandArray (*interface_renderer)(void) = NULL;
 Clay_RenderCommandArray render_commands = { 0 };
 
 void clay_stderr(Clay_ErrorData error_data)
@@ -44,20 +44,50 @@ void interface_initialise(void)
 
 }
 
-Clay_RenderCommandArray interface_renderer_fallback(float dt)
+Clay_RenderCommandArray interface_renderer_mainmenu()
 {
-    (void)dt;
-
     Clay_BeginLayout();
 
-    CLAY( 
+    CLAY(
         CLAY_ID("OuterContainer"),
-        CLAY_LAYOUT({ 
+        CLAY_LAYOUT({
+            .sizing = {
+                .width = CLAY_SIZING_FIXED(screen_width()),
+                .height = CLAY_SIZING_FIXED(screen_height())
+            },
+            .padding = { 24, 24 },
+            .childAlignment = { .x = CLAY_ALIGN_X_LEFT, .y = CLAY_ALIGN_Y_CENTER }
+        }),
+        CLAY_RECTANGLE({ .color = { 200, 200, 200, 64 } })
+    ) {
+        CLAY(
+            CLAY_ID("MainMenuContainer"),
+            CLAY_LAYOUT({
+                .sizing = {
+                    .width = CLAY_SIZING_PERCENT(0.33),
+                    .height = CLAY_SIZING_GROW(0),
+                },
+                .padding = { 24, 24 },
+            }),
+            CLAY_RECTANGLE({ .color = { 100, 100, 100, 255 } })
+        ) {}
+    }
+
+    return Clay_EndLayout();
+}
+
+Clay_RenderCommandArray interface_renderer_fallback()
+{
+    Clay_BeginLayout();
+
+    CLAY(
+        CLAY_ID("OuterContainer"),
+        CLAY_LAYOUT({
             .sizing = { .width = CLAY_SIZING_GROW(0), .height = CLAY_SIZING_GROW(0) },
-            .padding = { 24, 24 }, 
+            .padding = { 24, 24 },
             .childGap = 16
         }),
-        CLAY_RECTANGLE({ .color = { 200, 200, 200, 255 } }) 
+        CLAY_RECTANGLE({ .color = { 200, 200, 200, 0 } })
     ) { }
 
     return Clay_EndLayout();
@@ -65,12 +95,18 @@ Clay_RenderCommandArray interface_renderer_fallback(float dt)
 
 void interface_update(float dt)
 {
+    (void)dt;
+
     switch (screen_curr()) {
+        case INFEX_SCREEN_MAINMENU:
+            interface_renderer = interface_renderer_mainmenu;
+            break;
         default:
             interface_renderer = interface_renderer_fallback;
+            break;
     }
 
-    render_commands = interface_renderer(dt);
+    render_commands = interface_renderer();
 }
 
 void interface_render(void)

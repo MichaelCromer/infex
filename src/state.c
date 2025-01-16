@@ -28,8 +28,13 @@ unsigned int screen_height(void)
 
 void state_initialise(void)
 {
-    screen = INFEX_SCREEN_TITLE;
+    screen = INFEX_SCREEN_MAINMENU;
     interface_initialise();
+
+    world_initialise(32, 32);
+    world_generate();
+    camera_set_offset(world_centre());
+    camera_goto(world_centre());
 }
 
 void state_update(void)
@@ -37,28 +42,33 @@ void state_update(void)
     float dt = GetFrameTime();
 
     switch (screen) {
-        case INFEX_SCREEN_TITLE:
+        case INFEX_SCREEN_MAINMENU:
             if (IsKeyPressed(KEY_ENTER)) {
                 world_initialise(32, 32);
                 world_generate();
-                camera_set_offset((Vector2) {
-                              width / 2.0f,
-                              height / 2.0f}
-                );
+                camera_set_offset(world_centre());
+                camera_goto(world_centre());
                 screen = INFEX_SCREEN_GAME;
+            }
+            if (enemy_score() > 33) {
+                world_generate();
             }
             break;
         case INFEX_SCREEN_GAME:
+            camera_update(dt);
+            mouse_update(dt);
             if (IsKeyPressed(KEY_ENTER)) {
-                screen = INFEX_SCREEN_TITLE;
+                screen = INFEX_SCREEN_MAINMENU;
+                world_initialise(32, 32);
+                world_generate();
+                camera_set_offset(world_centre());
+                camera_goto(world_centre());
             }
             break;
         default:
             break;
     }
 
-    camera_update(dt);
-    mouse_update(dt);
     world_update(dt);
     interface_update(dt);
 }

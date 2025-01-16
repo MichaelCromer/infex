@@ -9,13 +9,14 @@
 /* GRID */
 size_t grid_size(void);
 float grid_scale(void);
-Vector2 *grid_centres(void);
+Vector2 *grid_faces(void);
 
 /* MAP */
 Color *map_colours(void);
 
 /* ENEMY */
 float *enemy_state(void);
+float enemy_score(void);
 
 /* WORLD */
 void world_initialise(size_t rows, size_t cols);

@@ -19,7 +19,7 @@
 
 #define ENEMY_UPDATE_INTERVAL (0.33f)   /* seconds between enemy updates    */
 #define ENEMY_GROW_MAX (0.05f)          /* maximum absolute increase        */
-#define ENEMY_GROW_FACTOR (0.01f)       /* fraction to increase by          */
+#define ENEMY_GROW_FACTOR (0.1f)       /* fraction to increase by          */
 #define ENEMY_GROW_THRESHOLD (0.01f)    /* minimum value for growth         */
 #define ENEMY_SPLIT_THRESHOLD (0.90f)   /* minimum delta before split       */
 #define ENEMY_LEVEL_THRESHOLD (0.10f)   /* minimum delta before level flow  */
@@ -31,9 +31,9 @@
 
 
 /* Geometry     */
-Vector2 centres[MAX_TILES] = { 0 };     /* locations on-screen of tile centres */
+Vector2 faces[MAX_TILES] = { 0 };     /* locations on-screen of tile faces */
 Vector2 vertices[MAX_VERTS] = { 0 };    /* locations on-screen of tile vertices */
-Vector2 middle = { 0 };                 /* geometric middle of grid on-screen */
+Vector2 centre = { 0 };                 /* geometric centre of grid on-screen */
 Vector2 bounds = { 0 };                 /* upper bounds of coordinates on-screen */
 
 size_t num_tiles = 0;
@@ -95,7 +95,7 @@ void grid_initialise(size_t rows, size_t cols)
     num_vertices = 2 * ((num_rows + 1) * (num_cols + 1) - 1);
 
     bounds = (Vector2) { cols * DELTA_C, rows * DELTA_R };
-    middle = (Vector2) { bounds.x / 2.0f, bounds.y / 2.0f };
+    centre = (Vector2) { bounds.x / 2.0f, bounds.y / 2.0f };
 
     float u = 0, v = 0;     /* for current tile face positions */
     size_t i = 0, j = 0;    /* for calculating face and vertex index positions */
@@ -115,7 +115,7 @@ void grid_initialise(size_t rows, size_t cols)
 
         /* all the faces and the systematic vertices */
         for (size_t c = 0; c < num_cols; c++) {
-            centres[i] = (Vector2) { u, v };
+            faces[i] = (Vector2) { u, v };
             vertices[j++] = (Vector2) { u - (DELTA_C / 2), v - (DELTA_R / 3) };
             vertices[j++] = (Vector2) { u - (DELTA_C / 2), v + (DELTA_R / 3) };
             u += DELTA_C;
@@ -179,9 +179,9 @@ size_t grid_num_neighbours(size_t r, size_t c)
     }
 }
 
-Vector2 *grid_centres(void)
+Vector2 *grid_faces(void)
 {
-    return centres;
+    return faces;
 }
 
 Vector2 *grid_vertices(void)
@@ -235,10 +235,10 @@ void mapgen_seismic(uint8_t dh, size_t n)
         c = GetRandomValue(0, num_cols - 1);
         v = (Vector2) {
         cosf(angle), sinf(angle)};
-        w = centres[grid_index(r, c)];
+        w = faces[grid_index(r, c)];
 
         for (size_t j = 0; j < grid_size(); j++) {
-            if (Vector2DotProduct(v, Vector2Subtract(centres[j], w)) >= 0) {
+            if (Vector2DotProduct(v, Vector2Subtract(faces[j], w)) >= 0) {
                 heights[j] += dh;
             }
         }
@@ -443,15 +443,16 @@ void world_initialise(size_t rows, size_t cols)
 
 void world_clear(void)
 {
+    e_score = 0;
     for (size_t i = 0; i < grid_size(); i++) {
         heights[i] = 0;
         enemy[i] = 0;
     }
 }
 
-Vector2 world_middle(void)
+Vector2 world_centre(void)
 {
-    return middle;
+    return centre;
 }
 
 Vector2 world_bounds(void)

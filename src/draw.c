@@ -12,7 +12,7 @@
 void draw_enemy(void)
 {
     float *enemy = enemy_state();
-    Vector2 *faces = grid_centres();
+    Vector2 *faces = grid_faces();
     float scale = grid_scale();
     for (size_t i = 0; i < grid_size(); i++) {
         if (FloatEquals(enemy[i], 0.0f)) {
@@ -25,7 +25,7 @@ void draw_enemy(void)
 
 void draw_map(void)
 {
-    Vector2 *faces = grid_centres();
+    Vector2 *faces = grid_faces();
     Color *colours = map_colours();
     float scale = grid_scale();
 
@@ -43,7 +43,7 @@ void draw_world(void)
 void draw_mouse(void)
 {
     if (mouse_track_face()) {
-        Vector2 *faces = grid_centres();
+        Vector2 *faces = grid_faces();
         float scale = grid_scale();
         DrawPoly(faces[mouse_face()], 6, scale/2, 30.0f, YELLOW);
     }
@@ -51,13 +51,16 @@ void draw_mouse(void)
 
 void draw_interface(void)
 {
-    interface_render();
     draw_mouse();
+    interface_render();
 }
 
 void draw_screen_title(void)
 {
+    BeginMode2D(*camera_state());
+    draw_world();
     draw_interface();
+    EndMode2D();
 }
 
 void draw_screen_game(void)
@@ -67,9 +70,6 @@ void draw_screen_game(void)
 
     BeginMode2D(*camera_state());
     draw_world();
-    EndMode2D();
-
-    BeginMode2D((Camera2D) { 0 });
     draw_interface();
     EndMode2D();
 }
@@ -86,7 +86,7 @@ void draw_screen(void)
     ClearBackground(RAYWHITE);
 
     switch (screen_curr()) {
-        case INFEX_SCREEN_TITLE:
+        case INFEX_SCREEN_MAINMENU:
             draw_screen_title();
             break;
         case INFEX_SCREEN_GAME:

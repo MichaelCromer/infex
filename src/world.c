@@ -358,7 +358,7 @@ void enemy_initialise()
     for (size_t i = 0; i < grid_size(); i++) {
         enemy[i] = 0.0f;
     }
-    enemy_set(0, 0.1f); /* TODO this is just for testing */
+    enemy_set(GetRandomValue(0, num_tiles-1), 1.0f); /* TODO this is just for testing */
 }
 
 void enemy_grow(size_t i)

@@ -10,6 +10,11 @@ size_t closest_vertex = 0;
 
 bool track_face = false;
 
+Vector2 mouse_state(void)
+{
+    return mouse;
+}
+
 /* return which tile face centre the mouse is closest to */
 size_t mouse_face(void)
 {

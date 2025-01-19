@@ -10,6 +10,7 @@
 #include "lib/clay/clay.h"
 #include "lib/clay/renderers/raylib/clay_renderer_raylib.c"
 
+#include "hdr/action.h"
 #include "hdr/infex.h"
 #include "hdr/state.h"
 
@@ -95,7 +96,7 @@ struct Button mainmenu_buttons[NUM_MAINMENU_BUTTONS] = {
     { .label = CLAY_STRING("Play"), .action = NULL },
     { .label = CLAY_STRING("Settings"), .action = NULL },
     { .label = CLAY_STRING("Credits"), .action = NULL },
-    { .label = CLAY_STRING("Exit"), .action = NULL },
+    { .label = CLAY_STRING("Exit"), .action = action_quit },
 };
 
 
@@ -133,8 +134,10 @@ void mainmenu_handle_click(Clay_ElementId id, Clay_PointerData mouse, intptr_t d
     if (mouse.state != CLAY_POINTER_DATA_PRESSED_THIS_FRAME) return;
 
     enum MAINMENU_BUTTON b = (enum MAINMENU_BUTTON) data;
+
     if ((b >= 0) && (b < NUM_MAINMENU_BUTTONS) && (b != mainmenu_selected)) {
         mainmenu_selected = b;
+        if (mainmenu_buttons[b].action) mainmenu_buttons[b].action();
     } else {
         mainmenu_selected = BUTTON_NONE;
     }
@@ -160,7 +163,10 @@ void mainmenu_render_button(enum MAINMENU_BUTTON b)
 
 void mainmenu_render_playpanel(void)
 {
-    return;
+    CLAY(
+        CLAY_LAYOUT({ .sizing = { .width = CLAY_SIZING_GROW(0), .height = 12 } }),
+        CLAY_RECTANGLE({ .color = { 10, 10, 10, 255 } })
+    ) {}
 }
 
 void mainmenu_render_sidepanel(void)
@@ -168,6 +174,7 @@ void mainmenu_render_sidepanel(void)
     uint8_t opacity = (mainmenu_selected == BUTTON_NONE) ? 0 : 200;
 
     CLAY(
+        CLAY_ID("MainMenuSidePanelContainer"),
         CLAY_LAYOUT({
             .sizing = { .width = CLAY_SIZING_GROW(0), .height = CLAY_SIZING_GROW(0) },
             .padding = CLAY_PADDING_ALL(24)
@@ -176,14 +183,25 @@ void mainmenu_render_sidepanel(void)
 
     {
         CLAY(
+            CLAY_ID("MainMenuSidePanel"),
             CLAY_RECTANGLE({ .color = { 100, 100, 100, opacity }, .cornerRadius = 24 }),
             CLAY_LAYOUT({
                 .sizing = {
                     .width = CLAY_SIZING_GROW(0),
                     .height = CLAY_SIZING_GROW(0)
-                }
+                },
+                .layoutDirection = CLAY_TOP_TO_BOTTOM,
+                .childGap = 12
             })
-        ) {
+        )
+
+        {
+            switch (mainmenu_selected) {
+                case BUTTON_PLAY:
+                    mainmenu_render_playpanel();
+                default:
+                    break;
+            }
         }
     }
 }

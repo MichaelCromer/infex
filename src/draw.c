@@ -5,10 +5,6 @@
 #include "hdr/mouse.h"
 #include "hdr/world.h"
 
-#if INFEX_DEBUG == 1
-#include <stdio.h>
-#endif
-
 void draw_enemy(void)
 {
     float *enemy = enemy_state();

@@ -7,9 +7,21 @@
 #define DEFAULT_SCREEN_WIDTH 800
 #define DEFAULT_SCREEN_HEIGHT 450
 
+bool quit = false;
+
 enum INFEX_SCREEN screen;
 unsigned int width = DEFAULT_SCREEN_WIDTH;
 unsigned int height = DEFAULT_SCREEN_HEIGHT;
+
+bool state_quit(void)
+{
+    return quit;
+}
+
+void state_set_quit(bool b)
+{
+    quit = b;
+}
 
 enum INFEX_SCREEN screen_curr(void)
 {

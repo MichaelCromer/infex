@@ -7,7 +7,7 @@ int main(void)
 
     state_initialise();
 
-    while (!WindowShouldClose()) {
+    while (!state_quit()) {
         state_update();
         draw_screen();
     }

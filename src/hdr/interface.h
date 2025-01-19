@@ -4,5 +4,6 @@
 void interface_initialise(void);
 void interface_render(void);
 void interface_update(float dt);
+void interface_reset(void);
 
 #endif

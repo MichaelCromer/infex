@@ -46,6 +46,7 @@ void clay_stderr(Clay_ErrorData error_data)
 
 struct Button {
     Clay_String label;
+    void (*action)(void);
 };
 
 Clay_LayoutConfig button_layout = {
@@ -86,16 +87,19 @@ enum MAINMENU_BUTTON {
     BUTTON_SETTINGS,
     BUTTON_CREDITS,
     BUTTON_EXIT,
+    BUTTON_NONE,
 };
+enum MAINMENU_BUTTON mainmenu_selected = BUTTON_NONE;
 
 struct Button mainmenu_buttons[NUM_MAINMENU_BUTTONS] = {
-    { .label = CLAY_STRING("Play") },
-    { .label = CLAY_STRING("Settings") },
-    { .label = CLAY_STRING("Credits") },
-    { .label = CLAY_STRING("Exit") },
+    { .label = CLAY_STRING("Play"), .action = NULL },
+    { .label = CLAY_STRING("Settings"), .action = NULL },
+    { .label = CLAY_STRING("Credits"), .action = NULL },
+    { .label = CLAY_STRING("Exit"), .action = NULL },
 };
 
-void render_mainmenu_title(void)
+
+void mainmenu_render_title(void)
 {
     CLAY(
         CLAY_ID("MainMenuTitle"),
@@ -122,19 +126,121 @@ void render_mainmenu_title(void)
     }
 }
 
-void render_mainmenu_button(enum MAINMENU_BUTTON b)
+void mainmenu_handle_click(Clay_ElementId id, Clay_PointerData mouse, intptr_t data)
+{
+    (void)id;
+
+    if (mouse.state != CLAY_POINTER_DATA_PRESSED_THIS_FRAME) return;
+
+    enum MAINMENU_BUTTON b = (enum MAINMENU_BUTTON) data;
+    if ((b >= 0) && (b < NUM_MAINMENU_BUTTONS) && (b != mainmenu_selected)) {
+        mainmenu_selected = b;
+    } else {
+        mainmenu_selected = BUTTON_NONE;
+    }
+}
+
+void mainmenu_render_button(enum MAINMENU_BUTTON b)
 {
     CLAY(
         CLAY_LAYOUT(button_layout),
-        Clay_Hovered() 
+        Clay_OnHover(mainmenu_handle_click , b),
+        Clay_Hovered()
             ? CLAY_RECTANGLE(button_rectangle_hover)
             : CLAY_RECTANGLE(button_rectangle)
-    ) {
+    )
+
+    {
         CLAY_TEXT(
             mainmenu_buttons[b].label,
             CLAY_TEXT_CONFIG(button_text)
         );
     }
+}
+
+void mainmenu_render_playpanel(void)
+{
+    return;
+}
+
+void mainmenu_render_sidepanel(void)
+{
+    uint8_t opacity = (mainmenu_selected == BUTTON_NONE) ? 0 : 200;
+
+    CLAY(
+        CLAY_LAYOUT({
+            .sizing = { .width = CLAY_SIZING_GROW(0), .height = CLAY_SIZING_GROW(0) },
+            .padding = CLAY_PADDING_ALL(24)
+        })
+    )
+
+    {
+        CLAY(
+            CLAY_RECTANGLE({ .color = { 100, 100, 100, opacity }, .cornerRadius = 24 }),
+            CLAY_LAYOUT({
+                .sizing = {
+                    .width = CLAY_SIZING_GROW(0),
+                    .height = CLAY_SIZING_GROW(0)
+                }
+            })
+        ) {
+        }
+    }
+}
+
+Clay_RenderCommandArray interface_renderer_mainmenu()
+{
+    Clay_BeginLayout();
+
+    CLAY(
+        CLAY_ID("OuterContainer"),
+        CLAY_RECTANGLE({ .color = { 200, 200, 200, 64 } }),
+        CLAY_LAYOUT({
+            .sizing = { .width = CLAY_SIZING_GROW(0), .height = CLAY_SIZING_GROW(0) },
+            .padding = { .left = 24 },
+            .layoutDirection = CLAY_LEFT_TO_RIGHT
+        })
+    )
+
+    {
+        CLAY(
+            CLAY_ID("MainMenu"),
+            CLAY_RECTANGLE({ .color = { 100, 100, 100, 255 } }),
+            CLAY_LAYOUT({
+                .sizing = {
+                    .width = CLAY_SIZING_PERCENT(0.30),
+                    .height = CLAY_SIZING_GROW(0),
+                },
+                .padding = { .left = 24, .right = 24, .bottom = 30 },
+                .childGap = 12,
+                .layoutDirection = CLAY_TOP_TO_BOTTOM
+            })
+        )
+
+        {
+            CLAY(CLAY_LAYOUT({ .sizing = { .height = CLAY_SIZING_GROW(0) } })) {}
+            mainmenu_render_title();
+            for (enum MAINMENU_BUTTON b = 0; b < NUM_MAINMENU_BUTTONS; b++) {
+                if (b == mainmenu_selected) {
+                    CLAY(
+                        CLAY_LAYOUT(button_layout),
+                        CLAY_RECTANGLE(button_rectangle_click)
+                    ) {
+                        CLAY_TEXT(
+                            mainmenu_buttons[b].label,
+                            CLAY_TEXT_CONFIG(button_text)
+                        );
+                    }
+                } else {
+                    mainmenu_render_button(b);
+                }
+            }
+        }
+
+        mainmenu_render_sidepanel();
+    }
+
+    return Clay_EndLayout();
 }
 
 /***************************************************************************************
@@ -165,51 +271,6 @@ void interface_initialise(void)
 
 }
 
-Clay_RenderCommandArray interface_renderer_mainmenu()
-{
-    Clay_BeginLayout();
-
-    CLAY(
-        CLAY_ID("OuterContainer"),
-        CLAY_RECTANGLE({ .color = { 200, 200, 200, 64 } }),
-        CLAY_LAYOUT({
-            .sizing = {
-                .width = CLAY_SIZING_FIXED(screen_width()),
-                .height = CLAY_SIZING_FIXED(screen_height())
-            },
-            .padding = { .left = 24 },
-            .childGap = 24,
-            .layoutDirection = CLAY_LEFT_TO_RIGHT
-        })
-    )
-
-    {
-        CLAY(
-            CLAY_ID("MainMenuContainer"),
-            CLAY_RECTANGLE({ .color = { 100, 100, 100, 255 } }),
-            CLAY_LAYOUT({
-                .sizing = {
-                    .width = CLAY_SIZING_PERCENT(0.30),
-                    .height = CLAY_SIZING_GROW(0),
-                },
-                .padding = { .left = 24, .right = 24, .bottom = 30 },
-                .childGap = 12,
-                .layoutDirection = CLAY_TOP_TO_BOTTOM
-            })
-        )
-
-        {
-            CLAY(CLAY_LAYOUT({ .sizing = { .height = CLAY_SIZING_GROW(0) } })) {}
-            render_mainmenu_title();
-            for (enum MAINMENU_BUTTON b = 0; b < NUM_MAINMENU_BUTTONS; b++) {
-                render_mainmenu_button(b);
-            }
-        }
-    }
-
-    return Clay_EndLayout();
-}
-
 Clay_RenderCommandArray interface_renderer_fallback()
 {
     Clay_BeginLayout();
@@ -230,6 +291,7 @@ Clay_RenderCommandArray interface_renderer_fallback()
 void interface_update(float dt)
 {
     (void)dt;
+    dimensions = (Clay_Dimensions) { GetScreenWidth(), GetScreenHeight() };
 
     Vector2 mouse = GetMousePosition();
     Clay_SetPointerState(
@@ -245,13 +307,19 @@ void interface_update(float dt)
             interface_renderer = interface_renderer_fallback;
             break;
     }
-    
+
     render_commands = interface_renderer();
 }
 
 void interface_render(void)
 {
+    /* TODO threading */
     Clay_Raylib_Render(render_commands);
+}
+
+void interface_reset(void)
+{
+    mainmenu_selected = BUTTON_NONE;
 }
 
 #pragma GCC diagnostic pop

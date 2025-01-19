@@ -58,6 +58,7 @@ void state_update(void)
             camera_update(dt);
             mouse_update(dt);
             if (IsKeyPressed(KEY_ENTER)) {
+                interface_reset();
                 screen = INFEX_SCREEN_MAINMENU;
                 world_initialise(32, 32);
                 world_generate();

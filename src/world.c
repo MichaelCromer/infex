@@ -19,10 +19,10 @@
 
 #define ENEMY_UPDATE_INTERVAL (0.33f)   /* seconds between enemy updates    */
 #define ENEMY_GROW_MAX (0.05f)          /* maximum absolute increase        */
-#define ENEMY_GROW_FACTOR (0.1f)       /* fraction to increase by          */
+#define ENEMY_GROW_FACTOR (0.01f)       /* fraction to increase by          */
 #define ENEMY_GROW_THRESHOLD (0.01f)    /* minimum value for growth         */
-#define ENEMY_SPLIT_THRESHOLD (0.90f)   /* minimum delta before split       */
-#define ENEMY_LEVEL_THRESHOLD (0.10f)   /* minimum delta before level flow  */
+#define ENEMY_SPLIT_THRESHOLD (0.66f)   /* minimum delta before split       */
+#define ENEMY_LEVEL_THRESHOLD (0.05f)   /* minimum delta before level flow  */
 
 
 /***************************************************************************************

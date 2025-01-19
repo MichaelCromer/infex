@@ -34,6 +34,12 @@ void draw_world(void)
 {
     draw_map();
     draw_enemy();
+
+    const Camera2D *cam = camera_state();
+    DrawCircleV(cam->target, 10, GRAY);
+    DrawCircleV(cam->offset, 10, BLACK);
+
+    DrawRectangleLinesEx( world_bounds(), 1, RED);
 }
 
 void draw_mouse(void)

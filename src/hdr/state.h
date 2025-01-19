@@ -3,14 +3,15 @@
 
 #include "infex.h"
 
-bool state_quit(void);
-void state_set_quit(bool b);
+bool is_quit(void);
+void set_quit(bool b);
 
 enum INFEX_SCREEN screen_curr(void);
-unsigned int screen_width(void);
-unsigned int screen_height(void);
+int screen_width(void);
+int screen_height(void);
 
 void state_initialise(void);
 void state_update(void);
+void state_terminate(void);
 
 #endif

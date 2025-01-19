@@ -1,4 +1,5 @@
 #include "hdr/infex.h"
+#include "hdr/state.h"
 
 
 /***************************************************************************************
@@ -31,10 +32,12 @@
 
 
 /* Geometry     */
-Vector2 faces[MAX_TILES] = { 0 };     /* locations on-screen of tile faces */
+Vector2 faces[MAX_TILES] = { 0 };       /* locations on-screen of tile faces */
 Vector2 vertices[MAX_VERTS] = { 0 };    /* locations on-screen of tile vertices */
 Vector2 centre = { 0 };                 /* geometric centre of grid on-screen */
-Vector2 bounds = { 0 };                 /* upper bounds of coordinates on-screen */
+Rectangle bounds = { 0 };               /* bounds of coordinates on-screen */
+Vector2 bounds_lower = { 0 };           /* top-left bounds of coordinates on-screen */
+Vector2 bounds_upper = { 0 };           /* bot-right bounds of coordinates on-screen */
 
 size_t num_tiles = 0;
 size_t num_vertices = 0;
@@ -89,13 +92,23 @@ void grid_initialise(size_t rows, size_t cols)
     if ((cols > MAX_C) || (cols > MAX_R)) return;
 
     /* establish limits and other single constants */
+
+    /* centre of world is translated to centre of screen in pixel land */
+    Vector2 midscreen = { GetScreenWidth() / 2.0f, GetScreenHeight() / 2.0f };
+    bounds.width = (cols - 0.5f) * DELTA_C;
+    bounds.height = (rows - 1) * DELTA_R;
+    Vector2 midgrid = { bounds.width / 2.0f, bounds.height / 2.0f };
+    Vector2 midscreen_delta = Vector2Subtract(midscreen, midgrid);
+    bounds.x = midscreen_delta.x;
+    bounds.y = midscreen_delta.y;
+
+    bounds_lower = (Vector2) { bounds.x, bounds.y };
+    bounds_upper = (Vector2) { bounds.x + bounds.width, bounds.y + bounds.height };
+
     num_rows = rows; 
     num_cols = cols;
     num_tiles = rows * cols;
     num_vertices = 2 * ((num_rows + 1) * (num_cols + 1) - 1);
-
-    bounds = (Vector2) { cols * DELTA_C, rows * DELTA_R };
-    centre = (Vector2) { bounds.x / 2.0f, bounds.y / 2.0f };
 
     float u = 0, v = 0;     /* for current tile face positions */
     size_t i = 0, j = 0;    /* for calculating face and vertex index positions */
@@ -107,7 +120,10 @@ void grid_initialise(size_t rows, size_t cols)
         /* first (non-systematic) row of vertices */
         if (r == 0) {
             for (size_t c = 0; c < num_cols; c++) {
-                vertices[j++] = (Vector2) { u, v - (2 * DELTA_R / 3) };
+                vertices[j++] = Vector2Add(
+                    (Vector2) { u, v - (2 * DELTA_R / 3) },
+                    midscreen_delta
+                );
                 u += DELTA_C;
             }
             u = (r % 2) ? (DELTA_C / 2) : 0.0f;
@@ -115,20 +131,38 @@ void grid_initialise(size_t rows, size_t cols)
 
         /* all the faces and the systematic vertices */
         for (size_t c = 0; c < num_cols; c++) {
-            faces[i] = (Vector2) { u, v };
-            vertices[j++] = (Vector2) { u - (DELTA_C / 2), v - (DELTA_R / 3) };
-            vertices[j++] = (Vector2) { u - (DELTA_C / 2), v + (DELTA_R / 3) };
+            faces[i] = Vector2Add((Vector2) { u, v }, midscreen_delta);
+
+            vertices[j++] = Vector2Add(
+                (Vector2) { u - (DELTA_C / 2), v - (DELTA_R / 3) }, 
+                midscreen_delta
+            );
+
+            vertices[j++] = Vector2Add(
+                (Vector2) { u - (DELTA_C / 2), v + (DELTA_R / 3) },
+                midscreen_delta
+            );
+
             u += DELTA_C;
             i++;
         }
-        vertices[j++] = (Vector2) { u - (DELTA_C / 2), v - (DELTA_R / 3) };
-        vertices[j++] = (Vector2) { u - (DELTA_C / 2), v + (DELTA_R / 3) };
+        vertices[j++] = Vector2Add(
+            (Vector2) { u - (DELTA_C / 2), v - (DELTA_R / 3) },
+            midscreen_delta
+        );
+        vertices[j++] = Vector2Add(
+            (Vector2) { u - (DELTA_C / 2), v + (DELTA_R / 3) },
+            midscreen_delta
+        );
 
         /* last (non-systematic) row of vertices */
         if (r == num_rows - 1) {
             u = (r % 2) ? (DELTA_C / 2) : 0.0f;
             for (size_t c = 0; c < num_cols; c++) {
-                vertices[j++] = (Vector2) { u, v + (2 * DELTA_R / 3) };
+                vertices[j++] = Vector2Add(
+                    (Vector2) { u, v + (2 * DELTA_R / 3) },
+                    midscreen_delta
+                );
                 u += DELTA_C;
             }
         }
@@ -455,9 +489,19 @@ Vector2 world_centre(void)
     return centre;
 }
 
-Vector2 world_bounds(void)
+Rectangle world_bounds(void)
 {
     return bounds;
+}
+
+Vector2 world_bounds_lower(void)
+{
+    return bounds_lower;
+}
+
+Vector2 world_bounds_upper(void)
+{
+    return bounds_upper;
 }
 
 void world_generate(void)

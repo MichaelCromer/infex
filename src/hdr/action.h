@@ -3,4 +3,6 @@
 
 void action_quit(void);
 
+void action_mainmenu_background_initialise(void);
+
 #endif

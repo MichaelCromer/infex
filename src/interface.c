@@ -179,9 +179,7 @@ void mainmenu_render_sidepanel(void)
             .sizing = { .width = CLAY_SIZING_GROW(0), .height = CLAY_SIZING_GROW(0) },
             .padding = CLAY_PADDING_ALL(24)
         })
-    )
-
-    {
+    ) {
         CLAY(
             CLAY_ID("MainMenuSidePanel"),
             CLAY_RECTANGLE({ .color = { 100, 100, 100, opacity }, .cornerRadius = 24 }),
@@ -190,6 +188,7 @@ void mainmenu_render_sidepanel(void)
                     .width = CLAY_SIZING_GROW(0),
                     .height = CLAY_SIZING_GROW(0)
                 },
+                .padding = CLAY_PADDING_ALL(24),
                 .layoutDirection = CLAY_TOP_TO_BOTTOM,
                 .childGap = 12
             })

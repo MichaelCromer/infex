@@ -1,6 +1,6 @@
 #include "hdr/infex.h"
+#include "hdr/state.h"
 #include "hdr/world.h"
-
 
 #define PAN_FACTOR_INERTIA (128.0f)
 #define PAN_FACTOR_DRAG (0.9f)
@@ -39,6 +39,13 @@ void camera_pan(Vector2 delta)
     pan_velocity = Vector2Add(pan_velocity, Vector2Scale(delta, PAN_FACTOR_INERTIA));
 }
 
+void camera_centre(void)
+{
+    Vector2 mid = { GetScreenWidth() / 2.0f, GetScreenHeight() / 2.0f };
+    camera_set_offset(mid);
+    camera_goto(mid);
+}
+
 void camera_update(float dt)
 {
     if (IsKeyDown(KEY_W)) {
@@ -58,6 +65,10 @@ void camera_update(float dt)
     }
 
     camera.target = Vector2Add(camera.target, Vector2Scale(pan_velocity, dt));
-    camera.target = Vector2Clamp(camera.target, Vector2Zero(), world_bounds());
+    camera.target = Vector2Clamp(
+        camera.target,
+        world_bounds_lower(),
+        world_bounds_upper()
+    );
     pan_velocity = Vector2Scale(pan_velocity, PAN_FACTOR_DRAG);
 }

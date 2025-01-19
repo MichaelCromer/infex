@@ -1,3 +1,4 @@
+#include "hdr/action.h"
 #include "hdr/camera.h"
 #include "hdr/interface.h"
 #include "hdr/mouse.h"
@@ -10,15 +11,15 @@
 bool quit = false;
 
 enum INFEX_SCREEN screen;
-unsigned int width = DEFAULT_SCREEN_WIDTH;
-unsigned int height = DEFAULT_SCREEN_HEIGHT;
+int width = 0;
+int height = 0;
 
-bool state_quit(void)
+bool is_quit(void)
 {
     return quit;
 }
 
-void state_set_quit(bool b)
+void set_quit(bool b)
 {
     quit = b;
 }
@@ -28,25 +29,27 @@ enum INFEX_SCREEN screen_curr(void)
     return screen;
 }
 
-unsigned int screen_width(void)
+int screen_width(void)
 {
     return width;
 }
 
-unsigned int screen_height(void)
+int screen_height(void)
 {
     return height;
 }
 
 void state_initialise(void)
 {
+    width = GetScreenWidth();
+    height = GetScreenHeight();
+
+    InitWindow(width, height, "Infex");
+
     screen = INFEX_SCREEN_MAINMENU;
     interface_initialise();
 
-    world_initialise(32, 32);
-    world_generate();
-    camera_set_offset(world_centre());
-    camera_goto(world_centre());
+    action_mainmenu_background_initialise();
 }
 
 void state_update(void)
@@ -58,8 +61,7 @@ void state_update(void)
             if (IsKeyPressed(KEY_ENTER)) {
                 world_initialise(32, 32);
                 world_generate();
-                camera_set_offset(world_centre());
-                camera_goto(world_centre());
+                camera_centre();
                 screen = INFEX_SCREEN_GAME;
             }
             if (enemy_score() > 33) {
@@ -72,10 +74,7 @@ void state_update(void)
             if (IsKeyPressed(KEY_ENTER)) {
                 interface_reset();
                 screen = INFEX_SCREEN_MAINMENU;
-                world_initialise(32, 32);
-                world_generate();
-                camera_set_offset(world_centre());
-                camera_goto(world_centre());
+                action_mainmenu_background_initialise();
             }
             break;
         default:
@@ -84,4 +83,9 @@ void state_update(void)
 
     world_update(dt);
     interface_update(dt);
+}
+
+void state_terminate(void)
+{
+    CloseWindow();
 }

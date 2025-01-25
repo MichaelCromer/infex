@@ -12,11 +12,18 @@
 #define MAX_H (8)
 #define MAX_TILES ((MAX_C) * (MAX_R))
 #define MAX_VERTS (2 * ((MAX_R + 1) * (MAX_C + 1) - 1))
-#define GRID_SCALE (16)
+#define GRID_SCALE (24)
 #define ROOT_3 (1.7320508f)
 #define DELTA_C (GRID_SCALE * ROOT_3)
-#define TILE_ASPECT_RATIO (1.0f)
-#define DELTA_R (3.0f * TILE_ASPECT_RATIO * GRID_SCALE / 2.0f)
+#define GRID_ASPECT_RATIO (1.0f)
+#define DELTA_R (3.0f * GRID_ASPECT_RATIO * GRID_SCALE / 2.0f)
+
+#define MASK_SLOPE_EE  1
+#define MASK_SLOPE_NE  2
+#define MASK_SLOPE_NW  4
+#define MASK_SLOPE_WW  8
+#define MASK_SLOPE_SW 16
+#define MASK_SLOPE_SE 32
 
 #define ENEMY_UPDATE_INTERVAL (0.33f)   /* seconds between enemy updates    */
 #define ENEMY_GROW_MAX (0.05f)          /* maximum absolute increase        */
@@ -39,6 +46,22 @@ Rectangle bounds = { 0 };               /* bounds of coordinates on-screen */
 Vector2 bounds_lower = { 0 };           /* top-left bounds of coordinates on-screen */
 Vector2 bounds_upper = { 0 };           /* bot-right bounds of coordinates on-screen */
 
+/* vector step separating neighbouring tile centres */
+Vector2 delta_face_ee = { DELTA_C, 0.0f };
+Vector2 delta_face_ne = { DELTA_C / 2.0f, -DELTA_R };
+Vector2 delta_face_nw = { -DELTA_C / 2.0f, -DELTA_R };
+Vector2 delta_face_ww = { -DELTA_C, 0.0f };
+Vector2 delta_face_sw = { -DELTA_C / 2.0f, DELTA_R };
+Vector2 delta_face_se = { DELTA_C / 2.0f, DELTA_R };
+
+/* vector steps separating tile corners from tile centres */
+Vector2 delta_vert_se = { DELTA_C / 2.0f, DELTA_R / 3.0f };
+Vector2 delta_vert_ne = { DELTA_C / 2.0f, -DELTA_R / 3.0f };
+Vector2 delta_vert_nn = { 0.0f, -2.0f * DELTA_R / 3.0f };
+Vector2 delta_vert_nw = { -DELTA_C / 2.0f, -DELTA_R / 3.0f };
+Vector2 delta_vert_sw = { -DELTA_C / 2.0f, DELTA_R / 3.0f };
+Vector2 delta_vert_ss = { 0.0f, 2.0f * DELTA_R / 3.0f };
+
 size_t num_tiles = 0;
 size_t num_vertices = 0;
 size_t num_rows = 0;
@@ -46,6 +69,7 @@ size_t num_cols = 0;
 
 /* Map          */
 uint8_t heights[MAX_TILES] = { 0 };
+uint8_t slopes[MAX_TILES] = { 0 };      /* bitmask showing which edges are slopes */
 Color colours[MAX_TILES] = { 0 };       /* colours on-screen of tile faces */
 
 /* Enemy        */
@@ -105,7 +129,7 @@ void grid_initialise(size_t rows, size_t cols)
     bounds_lower = (Vector2) { bounds.x, bounds.y };
     bounds_upper = (Vector2) { bounds.x + bounds.width, bounds.y + bounds.height };
 
-    num_rows = rows; 
+    num_rows = rows;
     num_cols = cols;
     num_tiles = rows * cols;
     num_vertices = 2 * ((num_rows + 1) * (num_cols + 1) - 1);
@@ -134,7 +158,7 @@ void grid_initialise(size_t rows, size_t cols)
             faces[i] = Vector2Add((Vector2) { u, v }, midscreen_delta);
 
             vertices[j++] = Vector2Add(
-                (Vector2) { u - (DELTA_C / 2), v - (DELTA_R / 3) }, 
+                (Vector2) { u - (DELTA_C / 2), v - (DELTA_R / 3) },
                 midscreen_delta
             );
 
@@ -218,9 +242,60 @@ Vector2 *grid_faces(void)
     return faces;
 }
 
-Vector2 *grid_vertices(void)
+Vector2 grid_face(size_t i)
 {
-    return vertices;
+    return faces[i];
+}
+
+Vector2 grid_vertex(size_t i)
+{
+    return vertices[i];
+}
+
+Vector2 grid_vertex_clockwise_from(size_t i, enum GRID_DIR d)
+{
+    Vector2 vertex = faces[i];
+    switch (d) {
+        case DIR_EE:
+            return Vector2Add(vertex, delta_vert_se);
+        case DIR_NE:
+            return Vector2Add(vertex, delta_vert_ne);
+        case DIR_NW:
+            return Vector2Add(vertex, delta_vert_nn);
+        case DIR_WW:
+            return Vector2Add(vertex, delta_vert_nw);
+        case DIR_SW:
+            return Vector2Add(vertex, delta_vert_sw);
+        case DIR_SE:
+            return Vector2Add(vertex, delta_vert_ss);
+        default:
+            break;
+    }
+
+    return vertex;
+}
+
+Vector2 grid_vertex_anticlockwise_from(size_t i, enum GRID_DIR d)
+{
+    Vector2 vertex = faces[i];
+    switch (d) {
+        case DIR_EE:
+            return Vector2Add(vertex, delta_vert_ne);
+        case DIR_NE:
+            return Vector2Add(vertex, delta_vert_nn);
+        case DIR_NW:
+            return Vector2Add(vertex, delta_vert_nw);
+        case DIR_WW:
+            return Vector2Add(vertex, delta_vert_sw);
+        case DIR_SW:
+            return Vector2Add(vertex, delta_vert_ss);
+        case DIR_SE:
+            return Vector2Add(vertex, delta_vert_se);
+        default:
+            break;
+    }
+
+    return vertex;
 }
 
 float grid_scale(void)
@@ -233,15 +308,32 @@ float grid_scale(void)
  * MAP
  */
 
-
-uint8_t *map_heights(void)
+bool map_slope(size_t i, enum GRID_DIR d)
 {
-    return heights;
-}
-
-uint8_t map_height(size_t i)
-{
-    return heights[i];
+    uint8_t mask = 0;
+    switch (d) {
+        case DIR_EE:
+            mask = MASK_SLOPE_EE;
+            break;
+        case DIR_NE:
+            mask = MASK_SLOPE_NE;
+            break;
+        case DIR_NW:
+            mask = MASK_SLOPE_NW;
+            break;
+        case DIR_WW:
+            mask = MASK_SLOPE_WW;
+            break;
+        case DIR_SW:
+            mask = MASK_SLOPE_SW;
+            break;
+        case DIR_SE:
+            mask = MASK_SLOPE_SE;
+            break;
+        default:
+            break;
+    }
+    return (slopes[i] & mask);
 }
 
 Color *map_colours(void)
@@ -249,13 +341,7 @@ Color *map_colours(void)
     return colours;
 }
 
-
-/***************************************************************************************
- * MAPGEN
- */
-
-
-void mapgen_seismic(uint8_t dh, size_t n)
+void map_gen_seismic(uint8_t dh, size_t n)
 {
     /* base case return */
     if (n <= 0 || dh <= 0) return;
@@ -277,11 +363,13 @@ void mapgen_seismic(uint8_t dh, size_t n)
             }
         }
     }
-    mapgen_seismic(dh / 2, n * 2);
+    map_gen_seismic(dh / 2, n * 2);
 }
 
-void mapgen_erosion(void)
+void map_gen_erosion(size_t rounds)
 {
+    if (!rounds) return;
+
     float buf[MAX_TILES] = { 0 };
     bool odd_row = false;
     size_t i = 0;
@@ -304,7 +392,9 @@ void mapgen_erosion(void)
                 if (odd_row && (c < (num_cols -1))) {
                     buf[i] += heights[i + num_cols + 1];
                     buf[i + num_cols + 1] += heights[i];
-                } else if (!odd_row && (c > 0)) {
+                }
+
+                if (!odd_row && (c > 0)) {
                     buf[i] += heights[i + num_cols - 1];
                     buf[i + num_cols - 1] += heights[i];
                 }
@@ -321,9 +411,11 @@ void mapgen_erosion(void)
             i++;
         }
     }
+
+    map_gen_erosion(rounds - 1);
 }
 
-void mapgen_renormalise(void)
+void map_gen_renormalise(void)
 {
     float max = 0.0f;
     float min = heights[0];
@@ -342,7 +434,7 @@ void mapgen_renormalise(void)
     }
 }
 
-void mapgen_colourset(void)
+void map_gen_colourset(void)
 {
     Color c0 = { 49, 163, 84, 255 };
     Color c1 = { 114, 84, 40, 255 };
@@ -353,6 +445,57 @@ void mapgen_colourset(void)
             continue;
         }
         colours[i] = ColorLerp(c0, c1, heights[i] / (1.0f * MAX_H));
+    }
+}
+
+void map_gen_slopes(void)
+{
+    size_t i = 0;
+    int8_t dh = 0;
+    size_t up = 0;
+    bool odd_row = false;
+
+    (void)odd_row;
+    for (size_t r = 0; r < num_rows; r++) {
+        odd_row = (r % 2);
+        for (size_t c = 0; c < num_cols; c++) {
+
+            if (c != (num_cols - 1)) {
+                dh = heights[i + 1] - heights[i];
+                if (dh != 0) {
+                    up = (dh > 0) ? (i + 1) : i;
+                    slopes[up] |= (up == i) ? MASK_SLOPE_EE : MASK_SLOPE_WW;
+                }
+            }
+
+            if (r != (num_rows - 1)) {
+                dh = heights[i + num_cols] - heights[i];
+                if (dh != 0) {
+                    up = (dh > 0) ? (i + num_cols) : i;
+                    slopes[up] |= (up == i)
+                        ? ( (odd_row) ? MASK_SLOPE_SW : MASK_SLOPE_SE )
+                        : ( (odd_row) ? MASK_SLOPE_NE : MASK_SLOPE_NW );
+                }
+            }
+
+            if (odd_row && (c != (num_cols - 1)) && (r != (num_rows - 1))) {
+                dh = heights[i + num_cols + 1] - heights[i];
+                if (dh != 0) {
+                    up = (dh > 0) ? (i + num_cols + 1) : i;
+                    slopes[up] |= (up == i) ? MASK_SLOPE_SE : MASK_SLOPE_NW;
+                }
+            }
+
+            if (!odd_row && (c != 0) && (r != (num_rows - 1))) {
+                dh = heights[i + num_cols - 1] - heights[i];
+                if (dh != 0) {
+                    up = (dh > 0) ? (i + num_cols - 1) : i;
+                    slopes[up] |= (up == i) ? MASK_SLOPE_SW : MASK_SLOPE_NE;
+                }
+            }
+
+            i++;
+        }
     }
 }
 
@@ -407,7 +550,7 @@ void enemy_grow(size_t i)
 }
 
 /* enemy balances out existing tiles
- * enemy splits to vacant tiles 
+ * enemy splits to vacant tiles
  * */
 void enemy_flow(size_t i, size_t j)
 {
@@ -480,6 +623,7 @@ void world_clear(void)
     e_score = 0;
     for (size_t i = 0; i < grid_size(); i++) {
         heights[i] = 0;
+        slopes[i] = 0;
         enemy[i] = 0;
     }
 }
@@ -507,10 +651,11 @@ Vector2 world_bounds_upper(void)
 void world_generate(void)
 {
     world_clear();
-    mapgen_seismic(8, 8);
-    mapgen_erosion();
-    mapgen_renormalise();
-    mapgen_colourset();
+    map_gen_seismic(8, 8);
+    map_gen_erosion(3);
+    map_gen_renormalise();
+    map_gen_colourset();
+    map_gen_slopes();
     enemy_initialise();
 }
 

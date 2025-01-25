@@ -10,9 +10,13 @@
 size_t grid_size(void);
 float grid_scale(void);
 Vector2 *grid_faces(void);
+Vector2 grid_face(size_t i);
+Vector2 grid_vertex_clockwise_from(size_t i, enum GRID_DIR d);
+Vector2 grid_vertex_anticlockwise_from(size_t i, enum GRID_DIR d);
 
 /* MAP */
 Color *map_colours(void);
+bool map_slope(size_t i, enum GRID_DIR d);
 
 /* ENEMY */
 float *enemy_state(void);

@@ -17,4 +17,14 @@ enum INFEX_SCREEN {
     INFEX_SCREEN_GAME,
 };
 
+#define NUM_GRID_DIRS 6
+enum GRID_DIR {
+    DIR_EE,
+    DIR_NE,
+    DIR_NW,
+    DIR_WW,
+    DIR_SW,
+    DIR_SE
+};
+
 #endif

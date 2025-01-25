@@ -8,15 +8,52 @@
 void draw_enemy(void)
 {
     float *enemy = enemy_state();
-    Vector2 *faces = grid_faces();
     float scale = grid_scale();
     for (size_t i = 0; i < grid_size(); i++) {
         if (FloatEquals(enemy[i], 0.0f)) {
             continue;
         }
         Color colour = RED;
-        DrawPoly(faces[i], 6, scale - 6, 30.0f, colour);
+        DrawPoly(grid_face(i), 6, scale - 6, 30.0f, colour);
     }
+}
+
+void draw_edge(size_t i, enum GRID_DIR d)
+{
+    uint8_t weight = 0;
+    switch (d) {
+        case DIR_NE:
+        case DIR_NW:
+            weight = 1;
+            break;
+        case DIR_EE:
+        case DIR_WW:
+            weight = 2;
+            break;
+        case DIR_SE:
+        case DIR_SW:
+            weight = 4;
+            break;
+        default:
+            break;
+    }
+
+    Vector2 start = grid_vertex_clockwise_from(i, d);
+    Vector2 end = grid_vertex_anticlockwise_from(i, d);
+
+    DrawLineEx(start, end, weight, BLACK);
+}
+
+void draw_slopes(size_t i)
+{
+    for (enum GRID_DIR d = 0; d < NUM_GRID_DIRS; d++) {
+        if (map_slope(i, d)) draw_edge(i, d);
+    }
+}
+
+void draw_tile(Vector2 pos, float scale, Color colour)
+{
+    DrawPoly(pos, 6, scale, 30.0f, colour);
 }
 
 void draw_map(void)
@@ -26,7 +63,8 @@ void draw_map(void)
     float scale = grid_scale();
 
     for (size_t i = 0; i < grid_size(); i++) {
-        DrawPoly(faces[i], 6, scale, 30.0f, colours[i]);
+        draw_tile(faces[i], scale, colours[i]);
+        draw_slopes(i);
     }
 }
 
@@ -34,12 +72,6 @@ void draw_world(void)
 {
     draw_map();
     draw_enemy();
-
-    const Camera2D *cam = camera_state();
-    DrawCircleV(cam->target, 10, GRAY);
-    DrawCircleV(cam->offset, 10, BLACK);
-
-    DrawRectangleLinesEx( world_bounds(), 1, RED);
 }
 
 void draw_mouse(void)

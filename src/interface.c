@@ -2,6 +2,7 @@
 #pragma GCC diagnostic ignored "-Wmissing-braces"
 #pragma GCC diagnostic ignored "-Wmissing-field-initializers"
 #pragma GCC diagnostic ignored "-Wpedantic"
+#pragma GCC diagnostic ignored "-Wunused-parameter"
 
 #include <stdlib.h>
 #include <stdio.h>
@@ -519,14 +520,6 @@ void interface_initialise(void)
     arena = Clay_CreateArenaWithCapacityAndMemory(memory, malloc(memory));
     dimensions = (Clay_Dimensions) { GetScreenWidth(), GetScreenHeight() };
 
-    /* FONTS    */
-    Clay_SetMeasureTextFunction(Raylib_MeasureText);
-    Raylib_fonts[FONT_ID_TITLE] = (Raylib_Font) {
-        .font = LoadFontEx(FONT_TARGET_TITLE, 48, 0, 400),
-        .fontId = FONT_ID_TITLE
-    };
-    SetTextureFilter(Raylib_fonts[FONT_ID_TITLE].font.texture, TEXTURE_FILTER_BILINEAR);
-
     /*  INIT    */
     Clay_Initialize(
         arena,
@@ -534,6 +527,13 @@ void interface_initialise(void)
         (Clay_ErrorHandler) { clay_stderr, 0 }
     );
 
+    /* FONTS    */
+    Clay_SetMeasureTextFunction(Raylib_MeasureText, 0);
+    Raylib_fonts[FONT_ID_TITLE] = (Raylib_Font) {
+        .font = LoadFontEx(FONT_TARGET_TITLE, 48, 0, 400),
+        .fontId = FONT_ID_TITLE
+    };
+    SetTextureFilter(Raylib_fonts[FONT_ID_TITLE].font.texture, TEXTURE_FILTER_BILINEAR);
 }
 
 Clay_RenderCommandArray interface_renderer_fallback()
@@ -546,8 +546,7 @@ Clay_RenderCommandArray interface_renderer_fallback()
             .sizing = { .width = CLAY_SIZING_GROW(0), .height = CLAY_SIZING_GROW(0) },
             .padding = { 24, 24 },
             .childGap = 16
-        }),
-        CLAY_RECTANGLE({ .color = { 200, 200, 200, 0 } })
+        })
     ) { }
 
     return Clay_EndLayout();

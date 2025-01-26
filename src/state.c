@@ -29,6 +29,11 @@ enum INFEX_SCREEN screen_curr(void)
     return screen;
 }
 
+void screen_set_curr(enum INFEX_SCREEN s)
+{
+    screen = s;
+}
+
 int screen_width(void)
 {
     return width;
@@ -59,10 +64,7 @@ void state_update(void)
     switch (screen) {
         case INFEX_SCREEN_MAINMENU:
             if (IsKeyPressed(KEY_ENTER)) {
-                world_initialise(32, 32);
-                world_generate();
-                camera_centre();
-                screen = INFEX_SCREEN_GAME;
+                action_start_random_game();
             }
             if (enemy_score() > 33) {
                 world_generate();

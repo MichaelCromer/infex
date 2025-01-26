@@ -32,7 +32,7 @@ void draw_edge(size_t i, enum GRID_DIR d)
             break;
         case DIR_SE:
         case DIR_SW:
-            weight = 4;
+            weight = 5;
             break;
         default:
             break;

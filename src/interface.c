@@ -50,7 +50,7 @@ enum BUTTON_ID {
     MENU_BUTTON_TEST,
     MAIN_BUTTON_PLAY,
     MAIN_BUTTON_SETTINGS,
-    MAIN_BUTTON_CREDITS,
+    MAIN_BUTTON_ABOUT,
     MAIN_BUTTON_EXIT,
     PLAY_BUTTON_TUTORIAL,
     PLAY_BUTTON_CAMPAIGN,
@@ -113,8 +113,8 @@ struct Button mainmenu_buttons[NUM_MAINMENU_BUTTONS] = {
         .on_click = NULL
     },
     {
-        .id = MAIN_BUTTON_CREDITS,
-        .label = CLAY_STRING("Credits"),
+        .id = MAIN_BUTTON_ABOUT,
+        .label = CLAY_STRING("About"),
         .on_hover = mainmenu_mouseover,
         .on_click = NULL
     },
@@ -222,18 +222,15 @@ void mainmenu_render_divline(void)
     ) {}
 }
 
-void mainmenu_render_playpanel(void)
+void mainmenu_render_subheading(Clay_String title_text)
 {
-    mainmenu_render_divline();
-
     CLAY(
-        CLAY_ID("MainMenuPlayPanelCampaignTitle"),
         CLAY_LAYOUT({
             .sizing = { .width = CLAY_SIZING_GROW(0) }
         })
     ) {
         CLAY_TEXT(
-            CLAY_STRING("Story Mode"),
+            title_text,
             CLAY_TEXT_CONFIG({
                 .fontId = FONT_ID_TITLE,
                 .fontSize = 30,
@@ -241,6 +238,13 @@ void mainmenu_render_playpanel(void)
             })
         );
     }
+}
+
+void mainmenu_render_playpanel(void)
+{
+    mainmenu_render_divline();
+
+    mainmenu_render_subheading(CLAY_STRING("Story Mode"));
 
     CLAY(
         CLAY_ID("MainMenuPlayPanelCampaignBody"),
@@ -293,7 +297,7 @@ void mainmenu_render_playpanel(void)
                 CLAY (
                     CLAY_LAYOUT({ 
                         .sizing = { .width = CLAY_SIZING_GROW(0) },
-                        .childAlignment = { .x = CLAY_ALIGN_X_RIGHT },
+                        .childAlignment = { .x = CLAY_ALIGN_X_CENTER },
                         .padding = CLAY_PADDING_ALL(6)
                     }),
                     CLAY_RECTANGLE({ .color = { 100, 100, 100, 200 } })
@@ -330,21 +334,7 @@ void mainmenu_render_playpanel(void)
      *
      * */
 
-    CLAY(
-        CLAY_ID("MainMenuPlayPanelRandomTitle"),
-        CLAY_LAYOUT({
-            .sizing = { .width = CLAY_SIZING_GROW(0) }
-        })
-    ) {
-        CLAY_TEXT(
-            CLAY_STRING("Random Map"),
-            CLAY_TEXT_CONFIG({
-                .fontId = FONT_ID_TITLE,
-                .fontSize = 30,
-                .textColor = { 0, 30, 60, 255 }
-            })
-        );
-    }
+    mainmenu_render_subheading(CLAY_STRING("Random Map"));
 
     CLAY(
         CLAY_ID("MainMenuPlayPanelRandomMapButtons"),
@@ -356,6 +346,68 @@ void mainmenu_render_playpanel(void)
     ) {
         CLAY( CLAY_LAYOUT({ .sizing = { .width = CLAY_SIZING_PERCENT(0.6) } }) ) {}
         mainmenu_render_button(&playrandom_button);
+    }
+
+    mainmenu_render_divline();
+}
+
+void mainmenu_render_aboutpanel(void)
+{
+    mainmenu_render_divline();
+
+    mainmenu_render_subheading(CLAY_STRING("Credits"));
+
+    CLAY(
+        CLAY_LAYOUT({
+            .sizing = { .width = CLAY_SIZING_GROW(0), .height = CLAY_SIZING_GROW(0) }
+        })
+    ) {
+        CLAY_TEXT(
+            CLAY_STRING("\
+                code by quaduck \
+                "),
+            CLAY_TEXT_CONFIG({
+                .fontId = FONT_ID_TITLE,
+                .fontSize = 18,
+                .textColor = { 0, 30, 60, 255 }
+            })
+        );
+    }
+
+    mainmenu_render_divline();
+
+    mainmenu_render_subheading(CLAY_STRING("Technical"));
+
+    CLAY(
+        CLAY_LAYOUT({
+            .sizing = { .width = CLAY_SIZING_GROW(0), .height = CLAY_SIZING_GROW(0) },
+            .childGap = 12,
+            .layoutDirection = CLAY_TOP_TO_BOTTOM,
+        })
+    ) {
+        CLAY_TEXT(
+            CLAY_STRING("\
+                $ cat src/*.c src/hdr/*.h | sed -n /[a-zA-Z]/p | wc -l\n\
+                > 1104\
+            "),
+            CLAY_TEXT_CONFIG({
+                .fontId = FONT_ID_TITLE,
+                .fontSize = 18,
+                .textColor = { 0, 30, 60, 255 }
+            })
+        );
+        CLAY_TEXT(
+            CLAY_STRING("\
+                Code : C\n\
+                Graphics : raylib (github.com/raysan/raylib)\n\
+                Interface : clay (github.com/nicbarker/clay)\n\
+            "),
+            CLAY_TEXT_CONFIG({
+                .fontId = FONT_ID_TITLE,
+                .fontSize = 18,
+                .textColor = { 0, 30, 60, 255 }
+            })
+        );
     }
 
     mainmenu_render_divline();
@@ -388,6 +440,10 @@ void mainmenu_render_sidepanel(void)
             switch (mainmenu_selected) {
                 case MAIN_BUTTON_PLAY:
                     mainmenu_render_playpanel();
+                    break;
+                case MAIN_BUTTON_ABOUT:
+                    mainmenu_render_aboutpanel();
+                    break;
                 default:
                     break;
             }

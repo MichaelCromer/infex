@@ -1,5 +1,5 @@
 CC = gcc
-CFLAGS = -Wall -Wextra -Wpedantic -g
+CFLAGS = -Wall -Wextra -Wpedantic
 CLIBS = -lraylib -lm
 
 SRCDIR = src
@@ -18,16 +18,17 @@ $(BLDDIR)/%.o: %.c
 	mkdir -p $(dir $@)
 	$(CC) $(CFLAGS) -c $< -o $@
 
-.PHONY: clean format tags
+dev: CFLAGS += -g
+dev: $(BLDDIR)/$(TARGET)
+
+prod: CFLAGS += -O3
+prod: $(BLDDIR)/$(TARGET)
+
 clean:
 	rm -rf $(BLDDIR)
-	make
-
-format:
-	indent -npro -linux -l88 -nut -i4 -cli4 $(shell find src -name "*.[ch]")
-	find -name '*~' -delete
-	sed -i '/ + \| - /s/ \([*\/]\) /\1/g' $(shell find src -name "*.[ch]")
+.PHONY: clean
 
 tags:
 	rm -rf tags
 	ctags $(SRC) $(HDR) $(LIBDIR)/clay/clay.h $(LIBDIR)/clay/renderers/raylib/*.c
+.PHONY: tags

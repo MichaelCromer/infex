@@ -34,8 +34,10 @@ void clay_stderr(Clay_ErrorData error_data)
     static Clay_ErrorType t = 0;
     static uint64_t call = 0;
     fprintf(stderr, "CLAY: Error %d", error_data.errorType);
-    if ((call > 0) && (error_data.errorType == t)) {
+    if ((error_data.errorType == t)) {
         fprintf(stderr, " (x%lu) ", call);
+    } else {
+        call = 0;
     }
     fprintf(stderr, "%s\n", error_data.errorText.chars);
     call++;
@@ -61,37 +63,40 @@ enum BUTTON_ID {
 struct Button {
     enum BUTTON_ID id;
     Clay_String label;
+    struct ButtonConfig *config;
     void (*on_hover)(Clay_ElementId id, Clay_PointerData mouse, intptr_t data);
     void (*on_click)(void);
 };
 
-Clay_LayoutConfig button_config_layout = {
-    .sizing = { .width = CLAY_SIZING_GROW(0), .height = CLAY_SIZING_FIXED(36)},
-    .childAlignment = {
-        .x = CLAY_ALIGN_X_CENTER,
-        .y = CLAY_ALIGN_Y_CENTER
-    }
+struct ButtonConfig {
+    Clay_LayoutConfig layout;
+    Clay_RectangleElementConfig rectangle_up;
+    Clay_RectangleElementConfig rectangle_hover;
+    Clay_RectangleElementConfig rectangle_down;
+    Clay_RectangleElementConfig rectangle_disabled;
+    Clay_TextElementConfig text;
 };
 
-Clay_RectangleElementConfig button_config_rectangle = {
-    .color = { 64, 64, 128, 255 },
-    .cornerRadius = 6
+struct ButtonConfig buttonconfig_mainmenu = {
+    .layout = {
+        .sizing = { .width = CLAY_SIZING_GROW(0), .height = CLAY_SIZING_FIXED(36)},
+        .childAlignment = { .x = CLAY_ALIGN_X_CENTER, .y = CLAY_ALIGN_Y_CENTER }
+    },
+    .rectangle_up = { .color = { 64, 64, 128, 255 }, .cornerRadius = 6 },
+    .rectangle_hover = { .color = { 96, 96, 128, 255 }, .cornerRadius = 6 },
+    .rectangle_down = { .color = { 128, 128, 128, 255 }, .cornerRadius = 6 },
+    .text = { .fontId = FONT_ID_TITLE, .fontSize = 24, .textColor = { 0, 0, 0, 255 } }
 };
 
-Clay_RectangleElementConfig button_config_rectangle_hover = {
-    .color = { 96, 96, 128, 255 },
-    .cornerRadius = 6
-};
-
-Clay_RectangleElementConfig button_config_rectangle_down = {
-    .color = { 128, 128, 128, 255 },
-    .cornerRadius = 6
-};
-
-Clay_TextElementConfig button_config_text = {
-    .fontId = FONT_ID_TITLE,
-    .fontSize = 24,
-    .textColor = { 0, 0, 0, 255 }
+struct ButtonConfig buttonconfig_sidepanel = {
+    .layout = {
+        .sizing = { .width = CLAY_SIZING_GROW(0), .height = CLAY_SIZING_FIXED(36)},
+        .childAlignment = { .x = CLAY_ALIGN_X_CENTER, .y = CLAY_ALIGN_Y_CENTER }
+    },
+    .rectangle_up = { .color = { 64, 64, 128, 255 }, .cornerRadius = 6 },
+    .rectangle_hover = { .color = { 96, 96, 128, 255 }, .cornerRadius = 6 },
+    .rectangle_down = { .color = { 128, 128, 128, 255 }, .cornerRadius = 6 },
+    .text = { .fontId = FONT_ID_TITLE, .fontSize = 24, .textColor = { 0, 0, 0, 255 } }
 };
 
 /*  MAIN MENU   ***********************************************************************/
@@ -104,24 +109,28 @@ struct Button mainmenu_buttons[NUM_MAINMENU_BUTTONS] = {
     {
         .id = MAIN_BUTTON_PLAY,
         .label = CLAY_STRING("Play"),
+        .config = &buttonconfig_mainmenu,
         .on_hover = mainmenu_mouseover,
         .on_click = NULL
     },
     {
         .id = MAIN_BUTTON_SETTINGS,
         .label = CLAY_STRING("Settings"),
+        .config = &buttonconfig_mainmenu,
         .on_hover = mainmenu_mouseover,
         .on_click = NULL
     },
     {
         .id = MAIN_BUTTON_ABOUT,
         .label = CLAY_STRING("About"),
+        .config = &buttonconfig_mainmenu,
         .on_hover = mainmenu_mouseover,
         .on_click = NULL
     },
     {
         .id = MAIN_BUTTON_EXIT,
         .label = CLAY_STRING("Exit"),
+        .config = &buttonconfig_mainmenu,
         .on_hover = mainmenu_mouseover,
         .on_click = action_quit
     }
@@ -132,11 +141,13 @@ struct Button playcampaign_buttons[NUM_PLAYCAMPAIGN_BUTTONS] = {
     {
         .id = PLAY_BUTTON_TUTORIAL,
         .label = CLAY_STRING("Tutorial"),
+        .config = &buttonconfig_sidepanel,
         .on_click = NULL,
     },
     {
         .id = PLAY_BUTTON_CAMPAIGN,
         .label = CLAY_STRING("Campaign"),
+        .config = &buttonconfig_sidepanel,
         .on_click = NULL,
     }
 };
@@ -144,6 +155,7 @@ struct Button playcampaign_buttons[NUM_PLAYCAMPAIGN_BUTTONS] = {
 struct Button playrandom_button = {
     .id = PLAY_BUTTON_RANDOM,
     .label = CLAY_STRING("Play Now"),
+    .config = &buttonconfig_sidepanel,
     .on_hover = mainmenu_mouseover,
     .on_click = action_start_random_game,
 };
@@ -200,17 +212,17 @@ void mainmenu_mouseover(Clay_ElementId clay_id, Clay_PointerData mouse, intptr_t
 void mainmenu_render_button(struct Button *button)
 {
     CLAY(
-        CLAY_LAYOUT(button_config_layout),
+        CLAY_LAYOUT(button->config->layout),
         Clay_OnHover(button->on_hover, button->id),
         Clay_Hovered()
-            ? CLAY_RECTANGLE(button_config_rectangle_hover)
-            : CLAY_RECTANGLE(button_config_rectangle)
+            ? CLAY_RECTANGLE(button->config->rectangle_hover)
+            : CLAY_RECTANGLE(button->config->rectangle_up)
     )
 
     {
         CLAY_TEXT(
             button->label,
-            CLAY_TEXT_CONFIG(button_config_text)
+            CLAY_TEXT_CONFIG(button->config->text)
         );
     }
 }
@@ -301,7 +313,16 @@ void mainmenu_render_playpanel(void)
                         .childAlignment = { .x = CLAY_ALIGN_X_CENTER },
                         .padding = CLAY_PADDING_ALL(6)
                     }),
-                    CLAY_RECTANGLE({ .color = { 100, 100, 100, 200 } })
+                    CLAY_RECTANGLE({ .color = { 100, 100, 100, 200 } }),
+                    Clay_Hovered()
+                        ? CLAY_BORDER_OUTSIDE({
+                            .width = 3,
+                            .color = { 30, 90, 30, 255 }
+                        })
+                        : CLAY_BORDER_OUTSIDE({
+                            .width = 1,
+                            .color = { 90, 90, 90, 255 }
+                        })
                 ) {
                     CLAY_TEXT(
                         current_profile,
@@ -487,12 +508,12 @@ Clay_RenderCommandArray interface_renderer_mainmenu()
             for (size_t b = 0; b < NUM_MAINMENU_BUTTONS; b++) {
                 if (mainmenu_buttons[b].id == mainmenu_selected) {
                     CLAY(
-                        CLAY_LAYOUT(button_config_layout),
-                        CLAY_RECTANGLE(button_config_rectangle_down)
+                        CLAY_LAYOUT(mainmenu_buttons[b].config->layout),
+                        CLAY_RECTANGLE(mainmenu_buttons[b].config->rectangle_down)
                     ) {
                         CLAY_TEXT(
                             mainmenu_buttons[b].label,
-                            CLAY_TEXT_CONFIG(button_config_text)
+                            CLAY_TEXT_CONFIG(mainmenu_buttons[b].config->text)
                         );
                     }
                 } else {

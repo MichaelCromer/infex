@@ -4,6 +4,7 @@
 int main(void)
 {
     state_initialise();
+    draw_initialise();
 
     while (!is_quit() && !WindowShouldClose()) { /* WindowShouldClose for debug only */
         state_update();

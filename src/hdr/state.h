@@ -5,6 +5,8 @@
 
 bool is_quit(void);
 void set_quit(bool b);
+bool is_debug(void);
+void set_debug(bool b);
 
 enum INFEX_SCREEN screen_curr(void);
 void screen_set_curr(enum INFEX_SCREEN s);

@@ -11,12 +11,17 @@
 #define MAX_R (64)
 #define MAX_H (8)
 #define MAX_TILES ((MAX_C) * (MAX_R))
-#define MAX_VERTS (2 * ((MAX_R + 1) * (MAX_C + 1) - 1))
+#define MAX_VERTS (2 * (MAX_R - 1) * (MAX_C - 1))
 #define GRID_SCALE (24)
-#define ROOT_3 (1.7320508f)
-#define DELTA_C (GRID_SCALE * ROOT_3)
 #define GRID_ASPECT_RATIO (1.0f)
+#define ROOT_3 (1.7320508f)
+
+#define DELTA_C 48
+#define DELTA_R 24
+/*
+#define DELTA_C (GRID_SCALE * ROOT_3)
 #define DELTA_R (3.0f * GRID_ASPECT_RATIO * GRID_SCALE / 2.0f)
+*/
 
 #define MASK_SLOPE_EE  1
 #define MASK_SLOPE_NE  2
@@ -42,6 +47,7 @@
 Vector2 faces[MAX_TILES] = { 0 };       /* locations on-screen of tile faces */
 Vector2 vertices[MAX_VERTS] = { 0 };    /* locations on-screen of tile vertices */
 Vector2 centre = { 0 };                 /* geometric centre of grid on-screen */
+Vector2 offset = { 0 };                 /* geometric offset of top left grid corner */
 Rectangle bounds = { 0 };               /* bounds of coordinates on-screen */
 Vector2 bounds_lower = { 0 };           /* top-left bounds of coordinates on-screen */
 Vector2 bounds_upper = { 0 };           /* bot-right bounds of coordinates on-screen */
@@ -62,7 +68,7 @@ Vector2 delta_vert_nw = { -DELTA_C / 2.0f, -DELTA_R / 3.0f };
 Vector2 delta_vert_sw = { -DELTA_C / 2.0f, DELTA_R / 3.0f };
 Vector2 delta_vert_ss = { 0.0f, 2.0f * DELTA_R / 3.0f };
 
-size_t num_tiles = 0;
+size_t num_faces = 0;
 size_t num_vertices = 0;
 size_t num_rows = 0;
 size_t num_cols = 0;
@@ -122,134 +128,80 @@ void grid_initialise(size_t rows, size_t cols)
     bounds.width = (cols - 0.5f) * DELTA_C;
     bounds.height = (rows - 1) * DELTA_R;
     Vector2 midgrid = { bounds.width / 2.0f, bounds.height / 2.0f };
-    Vector2 midscreen_delta = Vector2Subtract(midscreen, midgrid);
-    bounds.x = midscreen_delta.x;
-    bounds.y = midscreen_delta.y;
+    offset = Vector2Subtract(midscreen, midgrid);
+    bounds.x = offset.x;
+    bounds.y = offset.y;
 
     bounds_lower = (Vector2) { bounds.x, bounds.y };
     bounds_upper = (Vector2) { bounds.x + bounds.width, bounds.y + bounds.height };
 
     num_rows = rows;
     num_cols = cols;
-    num_tiles = rows * cols;
-    num_vertices = 2 * ((num_rows + 1) * (num_cols + 1) - 1);
+    num_faces = rows * cols;
+    num_vertices = 2 * (rows - 1) * (cols - 1);
 
-    float u = 0, v = 0;     /* for current tile face positions */
+    float u = 0, v = offset.y;     /* for current tile face positions */
     size_t i = 0, j = 0;    /* for calculating face and vertex index positions */
+    bool odd_row = false;
 
-    /* calculate the geometric data */
+    /* calculate the geometric tile data */
     for (size_t r = 0; r < num_rows; r++) {
-        u = (r % 2) ? (DELTA_C / 2) : 0.0f;
+        odd_row = (r % 2);
+        u = offset.x + ((odd_row) ? (DELTA_C / 2) : 0.0f);
 
-        /* first (non-systematic) row of vertices */
-        if (r == 0) {
-            for (size_t c = 0; c < num_cols; c++) {
-                vertices[j++] = Vector2Add(
-                    (Vector2) { u, v - (2 * DELTA_R / 3) },
-                    midscreen_delta
-                );
-                u += DELTA_C;
-            }
-            u = (r % 2) ? (DELTA_C / 2) : 0.0f;
-        }
-
-        /* all the faces and the systematic vertices */
         for (size_t c = 0; c < num_cols; c++) {
-            faces[i] = Vector2Add((Vector2) { u, v }, midscreen_delta);
-
-            vertices[j++] = Vector2Add(
-                (Vector2) { u - (DELTA_C / 2), v - (DELTA_R / 3) },
-                midscreen_delta
-            );
-
-            vertices[j++] = Vector2Add(
-                (Vector2) { u - (DELTA_C / 2), v + (DELTA_R / 3) },
-                midscreen_delta
-            );
-
+            /* faces are easy; they're 1:1 with (r,c) pairs */
+            faces[i++] = (Vector2) { u, v };
             u += DELTA_C;
-            i++;
-        }
-        vertices[j++] = Vector2Add(
-            (Vector2) { u - (DELTA_C / 2), v - (DELTA_R / 3) },
-            midscreen_delta
-        );
-        vertices[j++] = Vector2Add(
-            (Vector2) { u - (DELTA_C / 2), v + (DELTA_R / 3) },
-            midscreen_delta
-        );
 
-        /* last (non-systematic) row of vertices */
-        if (r == num_rows - 1) {
-            u = (r % 2) ? (DELTA_C / 2) : 0.0f;
-            for (size_t c = 0; c < num_cols; c++) {
-                vertices[j++] = Vector2Add(
-                    (Vector2) { u, v + (2 * DELTA_R / 3) },
-                    midscreen_delta
-                );
-                u += DELTA_C;
+            /* vertices are harder, they are either 0:1, 1:1, or 2:1 with (r,c)s */
+            /* canonically take tile i as owning verts ss and se of it */
+            if (r == (num_rows - 1)) continue; /* no verts last row */
+            if ((c > 0) && (c < (num_cols - 1))) {
+                vertices[j++] = Vector2Add(faces[i-1], delta_vert_ss);
+                vertices[j++] = Vector2Add(faces[i-1], delta_vert_se);
+            } else if (c == 0) {
+                if (odd_row) vertices[j++] = Vector2Add(faces[i-1], delta_vert_ss);
+                vertices[j++] = Vector2Add(faces[i-1], delta_vert_se);
+            } else if ((c == (num_cols - 1))) {
+                if (!odd_row)  vertices[j++] = Vector2Add(faces[i-1], delta_vert_ss);
             }
         }
         v += DELTA_R;
     }
+
+    /* calculate the tile vertex data */
 }
 
-size_t grid_index(size_t r, size_t c)
-{
-    return (num_cols*r) + c;
-}
-
-size_t grid_row(size_t i)
-{
-    return i / num_cols;
-}
-
-size_t grid_col(size_t i)
-{
-    return i % num_cols;
-}
-
-size_t grid_size(void)
-{
-    return num_tiles;
-}
+size_t grid_index(size_t r, size_t c) { return (num_cols*r) + c; }
+size_t grid_row(size_t i) { return i / num_cols; }
+size_t grid_col(size_t i) { return i % num_cols; }
+size_t grid_num_faces(void) { return num_faces; }
+size_t grid_num_vertices(void) { return num_vertices; }
+size_t grid_num_rows(void) { return num_rows; }
+size_t grid_num_cols(void) { return num_cols; }
+Vector2 *grid_faces(void) { return faces; }
+Vector2 grid_face(size_t i) { return faces[i]; }
+Vector2 *grid_vertices(void) { return vertices; }
+Vector2 grid_vertex(size_t i) { return vertices[i]; }
+Vector2 grid_offset(void) { return offset; }
+float grid_scale(void) { return (float)GRID_SCALE; }
+float grid_delta_row(void) { return (float)DELTA_R; }
+float grid_delta_col(void) { return (float)DELTA_C; }
 
 size_t grid_num_neighbours(size_t r, size_t c)
 {
     bool odd_row = (r % 2);
 
     if ((r == 0) || (r == (num_rows - 1))) {
-        if (c == 0) {
-            return (odd_row) ? 3 : 2;
-        } else if (c == (num_cols - 1)) {
-            return (odd_row) ? 2 : 3;
-        } else {
-            return 4;
-        }
+        if (c == 0) return (odd_row) ? 3 : 2;
+        if (c == (num_cols - 1)) return (odd_row) ? 2 : 3;
+        return 4;
     }
 
-    if (c == 0) {
-        return (odd_row) ? 5 : 3;
-    } else if (c == (num_cols - 1)) {
-        return (odd_row) ? 3 : 5;
-    } else {
-        return 6;
-    }
-}
-
-Vector2 *grid_faces(void)
-{
-    return faces;
-}
-
-Vector2 grid_face(size_t i)
-{
-    return faces[i];
-}
-
-Vector2 grid_vertex(size_t i)
-{
-    return vertices[i];
+    if (c == 0) return (odd_row) ? 5 : 3;
+    if (c == (num_cols - 1)) return (odd_row) ? 3 : 5;
+    return 6;
 }
 
 Vector2 grid_vertex_clockwise_from(size_t i, enum GRID_DIR d)
@@ -297,12 +249,6 @@ Vector2 grid_vertex_anticlockwise_from(size_t i, enum GRID_DIR d)
 
     return vertex;
 }
-
-float grid_scale(void)
-{
-    return (float)GRID_SCALE;
-}
-
 
 /***************************************************************************************
  * MAP
@@ -357,7 +303,7 @@ void map_gen_seismic(uint8_t dh, size_t n)
         cosf(angle), sinf(angle)};
         w = faces[grid_index(r, c)];
 
-        for (size_t j = 0; j < grid_size(); j++) {
+        for (size_t j = 0; j < grid_num_faces(); j++) {
             if (Vector2DotProduct(v, Vector2Subtract(faces[j], w)) >= 0) {
                 heights[j] += dh;
             }
@@ -419,7 +365,7 @@ void map_gen_renormalise(void)
 {
     float max = 0.0f;
     float min = heights[0];
-    for (size_t i = 0; i < grid_size(); i++) {
+    for (size_t i = 0; i < grid_num_faces(); i++) {
         if (heights[i] > max) {
             max = (float)heights[i];
         }
@@ -429,7 +375,7 @@ void map_gen_renormalise(void)
     }
 
     float factor = ((max - min) == 0) ? 0.0f : (MAX_H/(max - min));
-    for (size_t i = 0; i < grid_size(); i++) {
+    for (size_t i = 0; i < grid_num_faces(); i++) {
         heights[i] = floor((heights[i] - min)*factor);
     }
 }
@@ -439,7 +385,7 @@ void map_gen_colourset(void)
     Color c0 = { 49, 163, 84, 255 };
     Color c1 = { 114, 84, 40, 255 };
 
-    for (size_t i = 0; i < grid_size(); i++) {
+    for (size_t i = 0; i < grid_num_faces(); i++) {
         if (heights[i] == 0) {
             colours[i] = BLUE;
             continue;
@@ -532,10 +478,10 @@ float enemy_delta(size_t i, size_t j)
 
 void enemy_initialise()
 {
-    for (size_t i = 0; i < grid_size(); i++) {
+    for (size_t i = 0; i < grid_num_faces(); i++) {
         enemy[i] = 0.0f;
     }
-    enemy_set(GetRandomValue(0, num_tiles-1), 1.0f); /* TODO this is just for testing */
+    enemy_set(GetRandomValue(0, num_faces - 1), 1.0f); /* TODO this is just for testing */
 }
 
 void enemy_grow(size_t i)
@@ -621,7 +567,7 @@ void world_initialise(size_t rows, size_t cols)
 void world_clear(void)
 {
     e_score = 0;
-    for (size_t i = 0; i < grid_size(); i++) {
+    for (size_t i = 0; i < grid_num_faces(); i++) {
         heights[i] = 0;
         slopes[i] = 0;
         enemy[i] = 0;

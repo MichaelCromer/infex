@@ -9,6 +9,7 @@
 #define DEFAULT_SCREEN_HEIGHT 450
 
 bool quit = false;
+bool debug = false;
 
 enum INFEX_SCREEN screen;
 int width = 0;
@@ -22,6 +23,16 @@ bool is_quit(void)
 void set_quit(bool b)
 {
     quit = b;
+}
+
+bool is_debug(void)
+{
+    return debug;
+}
+
+void set_debug(bool b)
+{
+    debug = b;
 }
 
 enum INFEX_SCREEN screen_curr(void)
@@ -60,6 +71,8 @@ void state_initialise(void)
 void state_update(void)
 {
     float dt = GetFrameTime();
+
+    if (IsKeyPressed(KEY_GRAVE)) set_debug(!is_debug());
 
     switch (screen) {
         case INFEX_SCREEN_MAINMENU:

@@ -16,7 +16,7 @@
 #include "hdr/state.h"
 
 #define FONT_ID_TITLE 0
-#define FONT_TARGET_TITLE "res/font/Roboto-Regular.ttf"
+#define FONT_TARGET_TITLE "res/font/SyneMono-Regular.ttf"
 
 /***************************************************************************************
  * CLAY INTERNALS

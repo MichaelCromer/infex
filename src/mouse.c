@@ -1,39 +1,38 @@
+#include <math.h>
+
 #include "hdr/camera.h"
 #include "hdr/infex.h"
 #include "hdr/world.h"
-
-#define MOUSE_FACE_THRESHOLD (0.67f)
 
 Vector2 mouse = { 0 };
 size_t closest_face = 0;
 size_t closest_vertex = 0;
 
-bool track_face = false;
+bool track_face = true;
 
-Vector2 mouse_state(void)
-{
-    return mouse;
-}
+Vector2 mouse_state(void) { return mouse; }
+size_t mouse_face(void) { return closest_face; }
+size_t mouse_vertex(void) { return closest_vertex; }
+bool mouse_is_track_face(void) { return track_face; }
+void mouse_set_track_face(bool track) { track_face = track; }
 
-/* return which tile face centre the mouse is closest to */
-size_t mouse_face(void)
+void mouse_track_face(void)
 {
-    return closest_face;
-}
+    size_t row = (size_t) round(
+        Clamp( mouse.y / grid_delta_row(), 0.0f, (float) grid_num_rows() - 1)
+    );
 
-size_t mouse_vertex(void)
-{
-    return closest_vertex;
-}
+    bool odd_row = (row % 2);
+    float dc = grid_delta_col();
+    size_t col = (size_t) round(
+        Clamp(
+            (mouse.x - ((odd_row) ? (dc / 2.0f) : 0.0f)) / dc,
+            0.0f,
+            (float) grid_num_cols() - 1
+        )
+    );
 
-bool mouse_track_face(void)
-{
-    return track_face;
-}
-
-void mouse_set_track_face(bool track)
-{
-    track_face = track;
+    closest_face = grid_index(row, col);
 }
 
 void mouse_update(float dt)
@@ -41,14 +40,7 @@ void mouse_update(float dt)
     (void)dt;
 
     mouse = Vector2Add(GetMousePosition(), camera_position());
+    mouse = Vector2Subtract(mouse, grid_offset());
 
-    if (track_face) {
-        Vector2 *faces = grid_faces();
-        for (size_t i = 0; i < grid_size(); i++) {
-            if (Vector2Distance(mouse, faces[i]) < MOUSE_FACE_THRESHOLD * grid_scale()) {
-                closest_face = i;
-                break;
-            }
-        }
-    }
+    if (track_face) mouse_track_face();
 }

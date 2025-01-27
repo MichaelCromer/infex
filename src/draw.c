@@ -5,11 +5,34 @@
 #include "hdr/mouse.h"
 #include "hdr/world.h"
 
+typedef struct InfexDrawAsset {
+    Texture2D texture;
+    Rectangle bounds;
+    Vector2 centre;
+} InfexDrawAsset;
+
+void asset_load(InfexDrawAsset *asset, const char *file_name)
+{
+    asset->texture = LoadTexture(file_name);
+    asset->bounds = (Rectangle) { 0, 0, asset->texture.width, asset->texture.height };
+    asset->centre = (Vector2) {
+        asset->texture.width / 2.0f,
+        asset->texture.height / 2.0f
+    };
+}
+
+InfexDrawAsset hex_tile = { 0 };
+
+void draw_initialise(void)
+{
+    asset_load(&hex_tile, "res/img/hex_test4.png");
+}
+
 void draw_enemy(void)
 {
     float *enemy = enemy_state();
     float scale = grid_scale();
-    for (size_t i = 0; i < grid_size(); i++) {
+    for (size_t i = 0; i < grid_num_faces(); i++) {
         if (FloatEquals(enemy[i], 0.0f)) {
             continue;
         }
@@ -53,7 +76,30 @@ void draw_slopes(size_t i)
 
 void draw_tile(Vector2 pos, float scale, Color colour)
 {
-    DrawPoly(pos, 6, scale, 30.0f, colour);
+    (void)scale;
+    DrawTexturePro(
+        hex_tile.texture,
+        hex_tile.bounds,
+        (Rectangle) { pos.x, pos.y, hex_tile.texture.width, hex_tile.texture.height },
+        hex_tile.centre,
+        0,
+        colour
+    );
+//    DrawPoly(pos, 6, scale, 30.0f, colour);
+}
+
+void draw_map_debug(void)
+{
+    Vector2 *faces = grid_faces();
+    Vector2 *vertices = grid_vertices();
+
+    for (size_t i = 0; i < grid_num_faces(); i++) {
+        DrawCircleV(faces[i], 2, RED);
+    }
+
+    for (size_t i = 0; i < grid_num_vertices(); i++) {
+        DrawCircleV(vertices[i], 2, YELLOW);
+    }
 }
 
 void draw_map(void)
@@ -62,10 +108,12 @@ void draw_map(void)
     Color *colours = map_colours();
     float scale = grid_scale();
 
-    for (size_t i = 0; i < grid_size(); i++) {
+    for (size_t i = 0; i < grid_num_faces(); i++) {
         draw_tile(faces[i], scale, colours[i]);
         draw_slopes(i);
     }
+
+    if (is_debug()) draw_map_debug();
 }
 
 void draw_world(void)
@@ -76,7 +124,7 @@ void draw_world(void)
 
 void draw_mouse(void)
 {
-    if (mouse_track_face()) {
+    if (mouse_is_track_face()) {
         Vector2 *faces = grid_faces();
         float scale = grid_scale();
         DrawPoly(faces[mouse_face()], 6, scale/2, 30.0f, YELLOW);

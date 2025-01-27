@@ -3,6 +3,7 @@
 
 #include "state.h"
 
+void draw_initialise(void);
 void draw_screen(void);
 
 #endif

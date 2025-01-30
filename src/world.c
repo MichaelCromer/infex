@@ -1,45 +1,52 @@
+/***************************************************************************************
+ *  INFEX WORLD GENERATION AND MAP MANAGEMENT
+ ***************************************************************************************
+ *
+ *  All the world's a page
+ *
+ */
+
+
 #include "hdr/infex.h"
 #include "hdr/state.h"
 
 
-/***************************************************************************************
- * DEFINES
+/*--------------------------------------------------------------------------------------
+ *
+ *  DEFINES
+ *
  */
 
 
-#define MAX_C (64)
-#define MAX_R (64)
-#define MAX_H (8)
-#define MAX_TILES ((MAX_C) * (MAX_R))
-#define MAX_VERTS (2 * (MAX_R - 1) * (MAX_C - 1))
-#define GRID_SCALE (24)
-#define GRID_ASPECT_RATIO (1.0f)
-#define ROOT_3 (1.7320508f)
+#define MAX_C       (64)
+#define MAX_R       (64)
+#define MAX_H        (8)
+#define MAX_TILES   ((MAX_C) * (MAX_R))
+#define MAX_VERTS   (2 * (MAX_R - 1) * (MAX_C - 1))
 
-#define DELTA_C 48
-#define DELTA_R 24
-/*
-#define DELTA_C (GRID_SCALE * ROOT_3)
-#define DELTA_R (3.0f * GRID_ASPECT_RATIO * GRID_SCALE / 2.0f)
-*/
+#define GRID_SCALE  (24)
+#define DELTA_C     (48)
+#define DELTA_R     (24)
 
-#define MASK_SLOPE_EE  1
-#define MASK_SLOPE_NE  2
-#define MASK_SLOPE_NW  4
-#define MASK_SLOPE_WW  8
-#define MASK_SLOPE_SW 16
-#define MASK_SLOPE_SE 32
+#define MASK_SLOPE_EE  (1)
+#define MASK_SLOPE_NE  (2)
+#define MASK_SLOPE_NW  (4)
+#define MASK_SLOPE_WW  (8)
+#define MASK_SLOPE_SW (16)
+#define MASK_SLOPE_SE (32)
 
-#define ENEMY_UPDATE_INTERVAL (0.33f)   /* seconds between enemy updates    */
-#define ENEMY_GROW_MAX (0.05f)          /* maximum absolute increase        */
-#define ENEMY_GROW_FACTOR (0.01f)       /* fraction to increase by          */
-#define ENEMY_GROW_THRESHOLD (0.01f)    /* minimum value for growth         */
-#define ENEMY_SPLIT_THRESHOLD (0.66f)   /* minimum delta before split       */
-#define ENEMY_LEVEL_THRESHOLD (0.05f)   /* minimum delta before level flow  */
+#define ENEMY_UPDATE_INTERVAL   (0.33f) /* seconds between enemy updates    */
+#define ENEMY_GROW_MAX          (0.05f) /* maximum absolute increase        */
+#define ENEMY_GROW_FACTOR       (0.01f) /* fraction to increase by          */
+#define ENEMY_GROW_THRESHOLD    (0.01f) /* minimum value for growth         */
+#define ENEMY_SPLIT_THRESHOLD   (0.66f) /* minimum delta before split       */
+#define ENEMY_LEVEL_THRESHOLD   (0.05f) /* minimum delta before level flow  */
 
 
-/***************************************************************************************
- * DATA
+/*--------------------------------------------------------------------------------------
+ *
+ *  GEOMETRY
+ *
  */
 
 
@@ -75,8 +82,8 @@ size_t num_cols = 0;
 
 /* Map          */
 uint8_t heights[MAX_TILES] = { 0 };
-uint8_t slopes[MAX_TILES] = { 0 };      /* bitmask showing which edges are slopes */
 Color colours[MAX_TILES] = { 0 };       /* colours on-screen of tile faces */
+uint8_t slopes[MAX_VERTS] = { 0 };      /* bitmask showing edge types at verts */
 
 /* Enemy        */
 float enemy[MAX_TILES] = { 0 };
@@ -113,9 +120,30 @@ typedef struct {
 
 Building *buildings[MAX_TILES];         /* for tracking all owned tiles */
 
-/***************************************************************************************
- * GRID
+
+/*--------------------------------------------------------------------------------------
+ *
+ *  GRID
+ *
  */
+
+
+size_t grid_index(size_t r, size_t c) { return (num_cols*r) + c; }
+size_t grid_row(size_t i) { return i / num_cols; }
+size_t grid_col(size_t i) { return i % num_cols; }
+size_t grid_num_faces(void) { return num_faces; }
+size_t grid_num_vertices(void) { return num_vertices; }
+size_t grid_num_rows(void) { return num_rows; }
+size_t grid_num_cols(void) { return num_cols; }
+Vector2 *grid_faces(void) { return faces; }
+Vector2 grid_face(size_t i) { return faces[i]; }
+Vector2 *grid_vertices(void) { return vertices; }
+Vector2 grid_vertex(size_t i) { return vertices[i]; }
+Vector2 grid_offset(void) { return offset; }
+float grid_scale(void) { return (float)GRID_SCALE; }
+float grid_delta_row(void) { return (float)DELTA_R; }
+float grid_delta_col(void) { return (float)DELTA_C; }
+
 
 void grid_initialise(size_t rows, size_t cols)
 {
@@ -172,22 +200,6 @@ void grid_initialise(size_t rows, size_t cols)
 
     /* calculate the tile vertex data */
 }
-
-size_t grid_index(size_t r, size_t c) { return (num_cols*r) + c; }
-size_t grid_row(size_t i) { return i / num_cols; }
-size_t grid_col(size_t i) { return i % num_cols; }
-size_t grid_num_faces(void) { return num_faces; }
-size_t grid_num_vertices(void) { return num_vertices; }
-size_t grid_num_rows(void) { return num_rows; }
-size_t grid_num_cols(void) { return num_cols; }
-Vector2 *grid_faces(void) { return faces; }
-Vector2 grid_face(size_t i) { return faces[i]; }
-Vector2 *grid_vertices(void) { return vertices; }
-Vector2 grid_vertex(size_t i) { return vertices[i]; }
-Vector2 grid_offset(void) { return offset; }
-float grid_scale(void) { return (float)GRID_SCALE; }
-float grid_delta_row(void) { return (float)DELTA_R; }
-float grid_delta_col(void) { return (float)DELTA_C; }
 
 size_t grid_num_neighbours(size_t r, size_t c)
 {
@@ -250,8 +262,10 @@ Vector2 grid_vertex_anticlockwise_from(size_t i, enum GRID_DIR d)
     return vertex;
 }
 
-/***************************************************************************************
- * MAP
+/*--------------------------------------------------------------------------------------
+ *
+ *  MAP
+ *
  */
 
 bool map_slope(size_t i, enum GRID_DIR d)
@@ -282,10 +296,12 @@ bool map_slope(size_t i, enum GRID_DIR d)
     return (slopes[i] & mask);
 }
 
+
 Color *map_colours(void)
 {
     return colours;
 }
+
 
 void map_gen_seismic(uint8_t dh, size_t n)
 {
@@ -311,6 +327,7 @@ void map_gen_seismic(uint8_t dh, size_t n)
     }
     map_gen_seismic(dh / 2, n * 2);
 }
+
 
 void map_gen_erosion(size_t rounds)
 {
@@ -361,6 +378,7 @@ void map_gen_erosion(size_t rounds)
     map_gen_erosion(rounds - 1);
 }
 
+
 void map_gen_renormalise(void)
 {
     float max = 0.0f;
@@ -380,6 +398,7 @@ void map_gen_renormalise(void)
     }
 }
 
+
 void map_gen_colourset(void)
 {
     Color c0 = { 49, 163, 84, 255 };
@@ -393,6 +412,7 @@ void map_gen_colourset(void)
         colours[i] = ColorLerp(c0, c1, heights[i] / (1.0f * MAX_H));
     }
 }
+
 
 void map_gen_slopes(void)
 {
@@ -446,8 +466,10 @@ void map_gen_slopes(void)
 }
 
 
-/***************************************************************************************
- * ENEMY
+/*--------------------------------------------------------------------------------------
+ *
+ *  ENEMY
+ *
  */
 
 
@@ -553,8 +575,19 @@ void enemy_update(void)
 }
 
 
-/***************************************************************************************
+/*--------------------------------------------------------------------------------------
+ *
+ *  PLAYER
+ *
+ */
+
+
+
+
+/*--------------------------------------------------------------------------------------
+ *
  * WORLD
+ *
  */
 
 

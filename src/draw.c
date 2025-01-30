@@ -21,11 +21,23 @@ void asset_load(InfexDrawAsset *asset, const char *file_name)
     };
 }
 
+void asset_unload(InfexDrawAsset *asset)
+{
+    UnloadTexture(asset->texture);
+    asset->bounds = (Rectangle) { 0 };
+    asset->centre = (Vector2) { 0 };
+}
+
 InfexDrawAsset hex_tile = { 0 };
 
 void draw_initialise(void)
 {
-    asset_load(&hex_tile, "res/img/hex_test4.png");
+    asset_load(&hex_tile, "res/img/hex_test5.png");
+}
+
+void draw_terminate(void)
+{
+    asset_unload(&hex_tile);
 }
 
 void draw_enemy(void)
@@ -51,11 +63,11 @@ void draw_edge(size_t i, enum GRID_DIR d)
             break;
         case DIR_EE:
         case DIR_WW:
-            weight = 2;
+            weight = 3;
             break;
         case DIR_SE:
         case DIR_SW:
-            weight = 5;
+            weight = 6;
             break;
         default:
             break;
@@ -74,9 +86,8 @@ void draw_slopes(size_t i)
     }
 }
 
-void draw_tile(Vector2 pos, float scale, Color colour)
+void draw_tile(Vector2 pos, Color colour)
 {
-    (void)scale;
     DrawTexturePro(
         hex_tile.texture,
         hex_tile.bounds,
@@ -85,7 +96,6 @@ void draw_tile(Vector2 pos, float scale, Color colour)
         0,
         colour
     );
-//    DrawPoly(pos, 6, scale, 30.0f, colour);
 }
 
 void draw_map_debug(void)
@@ -106,10 +116,9 @@ void draw_map(void)
 {
     Vector2 *faces = grid_faces();
     Color *colours = map_colours();
-    float scale = grid_scale();
 
     for (size_t i = 0; i < grid_num_faces(); i++) {
-        draw_tile(faces[i], scale, colours[i]);
+        draw_tile(faces[i], colours[i]);
         draw_slopes(i);
     }
 
@@ -147,9 +156,6 @@ void draw_screen_title(void)
 
 void draw_screen_game(void)
 {
-    DrawRectangle(0, 0, screen_width(), screen_height(), PURPLE);
-    DrawText("In-Game", 20, 20, 40, MAROON);
-
     BeginMode2D(*camera_state());
     draw_world();
     draw_interface();

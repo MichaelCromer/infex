@@ -35,7 +35,7 @@ void world_initialise(size_t rows, size_t cols);
 void world_generate(void);
 void world_update(float dt);
 
-Rectangle world_bounds(void);
+Vector2 world_bounds(void);
 Vector2 world_bounds_upper(void);
 Vector2 world_bounds_lower(void);
 Vector2 world_centre(void);

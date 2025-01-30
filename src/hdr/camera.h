@@ -3,7 +3,8 @@
 
 #include "infex.h"
 
-const Camera2D *camera_state();
+const Camera2D *camera_state(void);
+const Camera2D *camera_default(void);
 Vector2 camera_position(void);
 void camera_set_offset(Vector2 offset);
 void camera_goto(Vector2 target);

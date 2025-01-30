@@ -142,7 +142,6 @@ void draw_mouse(void)
 
 void draw_interface(void)
 {
-    draw_mouse();
     interface_render();
 }
 
@@ -158,6 +157,10 @@ void draw_screen_game(void)
 {
     BeginMode2D(*camera_state());
     draw_world();
+    draw_mouse();
+    EndMode2D();
+
+    BeginMode2D(*camera_default());
     draw_interface();
     EndMode2D();
 }

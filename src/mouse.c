@@ -40,7 +40,6 @@ void mouse_update(float dt)
     (void)dt;
 
     mouse = Vector2Add(GetMousePosition(), camera_position());
-    mouse = Vector2Subtract(mouse, grid_offset());
 
     if (track_face) mouse_track_face();
 }

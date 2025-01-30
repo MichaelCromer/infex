@@ -54,10 +54,7 @@
 Vector2 faces[MAX_TILES] = { 0 };       /* locations on-screen of tile faces */
 Vector2 vertices[MAX_VERTS] = { 0 };    /* locations on-screen of tile vertices */
 Vector2 centre = { 0 };                 /* geometric centre of grid on-screen */
-Vector2 offset = { 0 };                 /* geometric offset of top left grid corner */
-Rectangle bounds = { 0 };               /* bounds of coordinates on-screen */
-Vector2 bounds_lower = { 0 };           /* top-left bounds of coordinates on-screen */
-Vector2 bounds_upper = { 0 };           /* bot-right bounds of coordinates on-screen */
+Vector2 bounds = { 0 };                 /* lower right map corner */
 
 /* vector step separating neighbouring tile centres */
 Vector2 delta_face_ee = { DELTA_C, 0.0f };
@@ -139,7 +136,6 @@ Vector2 *grid_faces(void) { return faces; }
 Vector2 grid_face(size_t i) { return faces[i]; }
 Vector2 *grid_vertices(void) { return vertices; }
 Vector2 grid_vertex(size_t i) { return vertices[i]; }
-Vector2 grid_offset(void) { return offset; }
 float grid_scale(void) { return (float)GRID_SCALE; }
 float grid_delta_row(void) { return (float)DELTA_R; }
 float grid_delta_col(void) { return (float)DELTA_C; }
@@ -152,30 +148,22 @@ void grid_initialise(size_t rows, size_t cols)
     /* establish limits and other single constants */
 
     /* centre of world is translated to centre of screen in pixel land */
-    Vector2 midscreen = { GetScreenWidth() / 2.0f, GetScreenHeight() / 2.0f };
-    bounds.width = (cols - 0.5f) * DELTA_C;
-    bounds.height = (rows - 1) * DELTA_R;
-    Vector2 midgrid = { bounds.width / 2.0f, bounds.height / 2.0f };
-    offset = Vector2Subtract(midscreen, midgrid);
-    bounds.x = offset.x;
-    bounds.y = offset.y;
-
-    bounds_lower = (Vector2) { bounds.x, bounds.y };
-    bounds_upper = (Vector2) { bounds.x + bounds.width, bounds.y + bounds.height };
+    bounds = (Vector2) { (cols - 0.5f) * DELTA_C, (rows - 1) * DELTA_R };
+    centre = Vector2Scale(bounds, 0.5f);
 
     num_rows = rows;
     num_cols = cols;
     num_faces = rows * cols;
     num_vertices = 2 * (rows - 1) * (cols - 1);
 
-    float u = 0, v = offset.y;     /* for current tile face positions */
+    float u = 0, v = 0;     /* for current tile face positions */
     size_t i = 0, j = 0;    /* for calculating face and vertex index positions */
     bool odd_row = false;
 
     /* calculate the geometric tile data */
     for (size_t r = 0; r < num_rows; r++) {
         odd_row = (r % 2);
-        u = offset.x + ((odd_row) ? (DELTA_C / 2) : 0.0f);
+        u = ((odd_row) ? (DELTA_C / 2) : 0.0f);
 
         for (size_t c = 0; c < num_cols; c++) {
             /* faces are easy; they're 1:1 with (r,c) pairs */
@@ -612,19 +600,9 @@ Vector2 world_centre(void)
     return centre;
 }
 
-Rectangle world_bounds(void)
+Vector2 world_bounds(void)
 {
     return bounds;
-}
-
-Vector2 world_bounds_lower(void)
-{
-    return bounds_lower;
-}
-
-Vector2 world_bounds_upper(void)
-{
-    return bounds_upper;
 }
 
 void world_generate(void)

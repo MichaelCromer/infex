@@ -18,9 +18,12 @@
 #define FONT_ID_TITLE 0
 #define FONT_TARGET_TITLE "res/font/SyneMono-Regular.ttf"
 
-/***************************************************************************************
+/*--------------------------------------------------------------------------------------
+ *
  * CLAY INTERNALS
+ *
  */
+
 
 uint64_t memory = 0;
 Clay_Arena arena = { 0 };
@@ -28,6 +31,7 @@ Clay_Dimensions dimensions = { 0 };
 
 Clay_RenderCommandArray (*interface_renderer)(void) = NULL;
 Clay_RenderCommandArray render_commands = { 0 };
+
 
 void clay_stderr(Clay_ErrorData error_data)
 {
@@ -44,9 +48,13 @@ void clay_stderr(Clay_ErrorData error_data)
     t = error_data.errorType;
 }
 
-/***************************************************************************************
- *  INTERFACE ELEMENTS
+
+/*--------------------------------------------------------------------------------------
+ *  
+ *  GENERIC ELEMENTS
+ *
  */
+
 
 enum BUTTON_ID {
     MENU_BUTTON_NONE,
@@ -60,6 +68,7 @@ enum BUTTON_ID {
     PLAY_BUTTON_RANDOM,
 };
 
+
 struct Button {
     enum BUTTON_ID id;
     Clay_String label;
@@ -67,6 +76,7 @@ struct Button {
     void (*on_hover)(Clay_ElementId id, Clay_PointerData mouse, intptr_t data);
     void (*on_click)(void);
 };
+
 
 struct ButtonConfig {
     Clay_LayoutConfig layout;
@@ -76,6 +86,7 @@ struct ButtonConfig {
     Clay_RectangleElementConfig rectangle_disabled;
     Clay_TextElementConfig text;
 };
+
 
 struct ButtonConfig buttonconfig_mainmenu = {
     .layout = {
@@ -88,6 +99,7 @@ struct ButtonConfig buttonconfig_mainmenu = {
     .text = { .fontId = FONT_ID_TITLE, .fontSize = 24, .textColor = { 0, 0, 0, 255 } }
 };
 
+
 struct ButtonConfig buttonconfig_sidepanel = {
     .layout = {
         .sizing = { .width = CLAY_SIZING_GROW(0), .height = CLAY_SIZING_FIXED(36)},
@@ -99,7 +111,16 @@ struct ButtonConfig buttonconfig_sidepanel = {
     .text = { .fontId = FONT_ID_TITLE, .fontSize = 24, .textColor = { 0, 0, 0, 255 } }
 };
 
+
+/*--------------------------------------------------------------------------------------
+ *  
+ *  INTERFACES
+ *
+ */
+
+
 /*  MAIN MENU   ***********************************************************************/
+
 
 enum BUTTON_ID mainmenu_selected = MENU_BUTTON_NONE;
 void mainmenu_mouseover(Clay_ElementId id, Clay_PointerData mouse, intptr_t data);
@@ -530,9 +551,38 @@ Clay_RenderCommandArray interface_renderer_mainmenu()
     return Clay_EndLayout();
 }
 
-/***************************************************************************************
- * INTERFACE FUNCTIONS
+
+/*  IN-GAME     ***********************************************************************/
+
+
+Clay_RenderCommandArray interface_renderer_ingame(void)
+{
+    Clay_BeginLayout();
+
+    CLAY(
+        CLAY_ID("OuterContainer"),
+        CLAY_RECTANGLE({ .color = { 200, 200, 200, 64 } }),
+        CLAY_LAYOUT({
+            .sizing = { .width = CLAY_SIZING_GROW(0), .height = CLAY_SIZING_GROW(0) },
+            .padding = { .left = 24 },
+            .layoutDirection = CLAY_LEFT_TO_RIGHT
+        })
+    )
+
+    {
+
+    }
+
+    return Clay_EndLayout();
+}
+
+
+/*--------------------------------------------------------------------------------------
+ *
+ * INTERFACE MANAGERS
+ *
  */
+
 
 void interface_initialise(void)
 {
@@ -557,6 +607,7 @@ void interface_initialise(void)
     SetTextureFilter(Raylib_fonts[FONT_ID_TITLE].font.texture, TEXTURE_FILTER_BILINEAR);
 }
 
+
 Clay_RenderCommandArray interface_renderer_fallback()
 {
     Clay_BeginLayout();
@@ -573,6 +624,7 @@ Clay_RenderCommandArray interface_renderer_fallback()
     return Clay_EndLayout();
 }
 
+
 void interface_update(float dt)
 {
     (void)dt;
@@ -588,6 +640,9 @@ void interface_update(float dt)
         case INFEX_SCREEN_MAINMENU:
             interface_renderer = interface_renderer_mainmenu;
             break;
+        case INFEX_SCREEN_GAME:
+            interface_renderer = interface_renderer_ingame;
+            break;
         default:
             interface_renderer = interface_renderer_fallback;
             break;
@@ -596,15 +651,18 @@ void interface_update(float dt)
     render_commands = interface_renderer();
 }
 
+
 void interface_render(void)
 {
-    /* TODO threading */
+    /* TODO threading ? */
     Clay_Raylib_Render(render_commands);
 }
+
 
 void interface_reset(void)
 {
     mainmenu_selected = MENU_BUTTON_NONE;
 }
+
 
 #pragma GCC diagnostic pop

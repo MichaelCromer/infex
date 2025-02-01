@@ -72,7 +72,10 @@ void state_update(void)
 {
     float dt = GetFrameTime();
 
-    if (IsKeyPressed(KEY_GRAVE)) set_debug(!is_debug());
+    if (IsKeyPressed(KEY_GRAVE)) {
+        set_debug(!is_debug());
+        mouse_set_track(true);
+    }
 
     switch (screen) {
         case INFEX_SCREEN_MAINMENU:

@@ -125,7 +125,8 @@ Building *buildings[MAX_TILES];         /* for tracking all owned tiles */
  */
 
 
-size_t grid_index(size_t r, size_t c) { return (num_cols*r) + c; }
+size_t grid_face_index(size_t r, size_t c) { return num_cols*r + c; }
+size_t grid_vert_index(size_t r, size_t c) { return 2*(num_cols - 1)*r + c; }
 size_t grid_row(size_t i) { return i / num_cols; }
 size_t grid_col(size_t i) { return i % num_cols; }
 size_t grid_num_faces(void) { return num_faces; }
@@ -135,7 +136,7 @@ size_t grid_num_cols(void) { return num_cols; }
 Vector2 *grid_faces(void) { return faces; }
 Vector2 grid_face(size_t i) { return faces[i]; }
 Vector2 *grid_vertices(void) { return vertices; }
-Vector2 grid_vertex(size_t i) { return vertices[i]; }
+Vector2 grid_vert(size_t i) { return vertices[i]; }
 float grid_scale(void) { return (float)GRID_SCALE; }
 float grid_delta_row(void) { return (float)DELTA_R; }
 float grid_delta_col(void) { return (float)DELTA_C; }
@@ -305,7 +306,7 @@ void map_gen_seismic(uint8_t dh, size_t n)
         c = GetRandomValue(0, num_cols - 1);
         v = (Vector2) {
         cosf(angle), sinf(angle)};
-        w = faces[grid_index(r, c)];
+        w = faces[grid_face_index(r, c)];
 
         for (size_t j = 0; j < grid_num_faces(); j++) {
             if (Vector2DotProduct(v, Vector2Subtract(faces[j], w)) >= 0) {

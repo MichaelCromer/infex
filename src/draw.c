@@ -133,10 +133,10 @@ void draw_world(void)
 
 void draw_mouse(void)
 {
-    if (mouse_is_track_face()) {
-        Vector2 *faces = grid_faces();
+    if (mouse_is_track()) {
         float scale = grid_scale();
-        DrawPoly(faces[mouse_face()], 6, scale/2, 30.0f, YELLOW);
+        DrawPoly(grid_face(mouse_face()), 6, scale/4, 30.0f, YELLOW);
+        DrawPoly(grid_vert(mouse_vert()), 6, scale/4, 30.0f, RED);
     }
 }
 

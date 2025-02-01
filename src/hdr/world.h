@@ -7,7 +7,8 @@
 
 
 /* GRID */
-size_t grid_index(size_t r, size_t c);
+size_t grid_face_index(size_t r, size_t c);
+size_t grid_vert_index(size_t r, size_t c);
 size_t grid_num_faces(void);
 size_t grid_num_vertices(void);
 size_t grid_num_rows(void);
@@ -19,6 +20,7 @@ Vector2 grid_offset(void);
 Vector2 *grid_faces(void);
 Vector2 grid_face(size_t i);
 Vector2 *grid_vertices(void);
+Vector2 grid_vert(size_t i);
 Vector2 grid_vertex_clockwise_from(size_t i, enum GRID_DIR d);
 Vector2 grid_vertex_anticlockwise_from(size_t i, enum GRID_DIR d);
 

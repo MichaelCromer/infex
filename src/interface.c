@@ -555,12 +555,44 @@ Clay_RenderCommandArray interface_renderer_mainmenu()
 /*  IN-GAME     ***********************************************************************/
 
 
+/*  IN-GAME     //  TOP BAR     *******************************************************/
+
+
 void ingame_render_topbar(void)
 {
     CLAY(
         CLAY_ID("InGameTopBar"),
         CLAY_LAYOUT({
             .sizing = { .width = CLAY_SIZING_GROW(0), .height = CLAY_SIZING_FIXED(36) },
+            .padding = { .left = 24, .right = 24, .top = 3, .bottom = 6 },
+            .layoutDirection = CLAY_LEFT_TO_RIGHT
+        }),
+        CLAY_RECTANGLE({ .color = { 60, 60, 180, 255 } })
+    )
+
+    {
+        CLAY(
+            CLAY_LAYOUT({
+                .sizing = { .width = 120, .height = CLAY_SIZING_GROW(0) }
+            }),
+            CLAY_RECTANGLE({ .color = { 24, 24, 96, 255 }, .cornerRadius = 3 })
+        ) { }
+    }
+}
+
+
+/*  IN-GAME     //  BOTTOM BAR  *******************************************************/
+
+
+void ingame_render_botbar()
+{
+    CLAY(
+        CLAY_ID("InGameBotBar"),
+        CLAY_LAYOUT({
+            .sizing = {
+                .width = CLAY_SIZING_GROW(0),
+                .height = CLAY_SIZING_FIXED(45)
+            },
             .padding = { .left = 24, .right = 24, .top = 3, .bottom = 6 },
             .layoutDirection = CLAY_LEFT_TO_RIGHT
         }),
@@ -592,6 +624,17 @@ Clay_RenderCommandArray interface_renderer_ingame(void)
 
     {
         ingame_render_topbar();
+
+        CLAY(
+            CLAY_LAYOUT({
+                .sizing = {
+                    .width = CLAY_SIZING_GROW(0),
+                    .height = CLAY_SIZING_GROW(0)
+                }
+            })
+        ) {}
+
+        ingame_render_botbar();
     }
 
     return Clay_EndLayout();

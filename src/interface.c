@@ -100,12 +100,17 @@ struct Button {
     enum BUTTON_ID id;
     bool down;
     Clay_String label;
-    struct ButtonConfig *config;
     void (*on_hover)(Clay_ElementId id, Clay_PointerData mouse, intptr_t data);
     void (*on_click)(void);
 };
 
 
+/*
+ *  ButtonConfig
+ *
+ *  Holds enough Clay config structs to describe all the button states
+ *  Allows for convenient classes of button
+ */
 struct ButtonConfig {
     Clay_LayoutConfig layout;
     Clay_RectangleElementConfig rectangle_up;
@@ -116,7 +121,21 @@ struct ButtonConfig {
 };
 
 
-struct ButtonConfig buttonconfig_mainmenu = {
+struct ButtonArray {
+    enum BUTTON_ID selected;
+    size_t length;
+    struct Button *buttons;
+    struct ButtonConfig *buttonconfig;
+    Clay_LayoutConfig layout;
+};
+
+
+/*
+ *  Menu Button Config
+ *      - Title screen main menu
+ *      - Title screen side panels
+ */
+struct ButtonConfig buttonconfig_menu = {
     .layout = {
         .sizing = { .width = CLAY_SIZING_GROW(0), .height = CLAY_SIZING_FIXED(36)},
         .childAlignment = { .x = CLAY_ALIGN_X_CENTER, .y = CLAY_ALIGN_Y_CENTER }
@@ -128,67 +147,83 @@ struct ButtonConfig buttonconfig_mainmenu = {
 };
 
 
-struct ButtonConfig buttonconfig_gamebar = {
+/*  Primary Button Config
+ *      - In-game buttons (top/bottom bar)
+ */
+struct ButtonConfig buttonconfig_primary = {
     .layout = {
-        .sizing = { .width = CLAY_SIZING_FIXED(36), .height = CLAY_SIZING_FIXED(36)},
+        .sizing = { .width = CLAY_SIZING_FIT(0), .height = CLAY_SIZING_PERCENT(0.9)},
         .childAlignment = { .x = CLAY_ALIGN_X_CENTER, .y = CLAY_ALIGN_Y_CENTER }
     },
     .rectangle_up = { .color = colour_button_primary_up, .cornerRadius = 6 },
     .rectangle_hover = { .color = colour_button_primary_hover, .cornerRadius = 6 },
     .rectangle_down = { .color = colour_button_primary_down, .cornerRadius = 6 },
-    .text = { .fontId = FONT_ID_TITLE, .fontSize = 24, .textColor = colour_text_label }
+    .text = { .fontId = FONT_ID_TITLE, .fontSize = 18, .textColor = colour_text_label }
 };
 
 
-void button_render(struct Button *button)
+void button_render(struct Button *button, struct ButtonConfig *config)
 {
     CLAY(
-        CLAY_LAYOUT(button->config->layout),
+        CLAY_LAYOUT(config->layout),
         Clay_OnHover(button->on_hover, button->id),
         (button->down)
-            ? CLAY_RECTANGLE(button->config->rectangle_down)
+            ? CLAY_RECTANGLE(config->rectangle_down)
             : (
                 Clay_Hovered()
-                    ? CLAY_RECTANGLE(button->config->rectangle_hover)
-                    : CLAY_RECTANGLE(button->config->rectangle_up)
+                    ? CLAY_RECTANGLE(config->rectangle_hover)
+                    : CLAY_RECTANGLE(config->rectangle_up)
             )
     ) {
         CLAY_TEXT(
             button->label,
-            CLAY_TEXT_CONFIG(button->config->text)
+            CLAY_TEXT_CONFIG(config->text)
         );
     }
 }
 
 
-void button_render_array(struct Button *buttons, size_t n, Clay_LayoutDirection d)
+void buttonarray_render(struct ButtonArray *buttonarray)
 {
     CLAY(
-        CLAY_LAYOUT({
-            .sizing = { .width = CLAY_SIZING_GROW(0), .height = CLAY_SIZING_GROW(0) },
-            .padding = CLAY_PADDING_ALL(18),
-            .childGap = 12,
-            .layoutDirection = d,
-        })
+        CLAY_LAYOUT(buttonarray->layout)
     ) {
-        for (size_t i = 0; i < n; i++) {
-            button_render(&buttons[i]);
+        for (size_t i = 0; i < buttonarray->length; i++) {
+            button_render(&(buttonarray->buttons[i]), buttonarray->buttonconfig);
         }
     }
 }
 
 
-void button_click(struct Button *b)
+void button_click(struct Button *button)
 {
-    b->down = !b->down;
-    if ((b->down) && (b->on_click)) b->on_click();
+    button->down = !button->down;
+    if ((button->down) && (button->on_click)) button->on_click();
+}
+
+
+/*
+ *  ButtonArrays handle mutually exclusive options
+ *  Only one can be active at a time
+ */
+void buttonarray_click(enum BUTTON_ID clicked, struct ButtonArray *buttonarray)
+{
+    buttonarray->selected = BUTTON_NONE;
+    for (size_t i = 0; i < buttonarray->length; i++) {
+        if (buttonarray->buttons[i].down) {
+            buttonarray->buttons[i].down = false;
+            if (buttonarray->buttons[i].id == clicked) continue;
+        }
+        if (buttonarray->buttons[i].id != clicked) continue;
+        buttonarray->selected = buttonarray->buttons[i].id;
+        button_click(&(buttonarray->buttons[i]));
+    }
 }
 
 
 const struct Button button_test = {
     .id = BUTTON_TEST,
     .label = CLAY_STRING("Test"),
-    .config = &buttonconfig_mainmenu,
 };
 
 
@@ -202,7 +237,6 @@ const struct Button button_test = {
 /*  MAIN MENU   ***********************************************************************/
 
 
-enum BUTTON_ID mainmenu_selected = BUTTON_NONE;
 void mainmenu_hover(Clay_ElementId id, Clay_PointerData mouse, intptr_t data);
 
 #define NUM_MAINMENU_BUTTONS 4
@@ -210,53 +244,57 @@ struct Button mainmenu_buttons[NUM_MAINMENU_BUTTONS] = {
     {
         .id = MAIN_BUTTON_PLAY,
         .label = CLAY_STRING("Play"),
-        .config = &buttonconfig_mainmenu,
         .on_hover = mainmenu_hover,
         .on_click = NULL
     },
     {
         .id = MAIN_BUTTON_SETTINGS,
         .label = CLAY_STRING("Settings"),
-        .config = &buttonconfig_mainmenu,
         .on_hover = mainmenu_hover,
         .on_click = NULL
     },
     {
         .id = MAIN_BUTTON_ABOUT,
         .label = CLAY_STRING("About"),
-        .config = &buttonconfig_mainmenu,
         .on_hover = mainmenu_hover,
         .on_click = NULL
     },
     {
         .id = MAIN_BUTTON_EXIT,
         .label = CLAY_STRING("Exit"),
-        .config = &buttonconfig_mainmenu,
         .on_hover = mainmenu_hover,
         .on_click = action_quit
     }
 };
 
-#define NUM_PLAYCAMPAIGN_BUTTONS 2
-struct Button playcampaign_buttons[NUM_PLAYCAMPAIGN_BUTTONS] = {
-    {
-        .id = PLAY_BUTTON_TUTORIAL,
-        .label = CLAY_STRING("Tutorial"),
-        .config = &buttonconfig_mainmenu,
-        .on_click = NULL,
-    },
-    {
-        .id = PLAY_BUTTON_CAMPAIGN,
-        .label = CLAY_STRING("Campaign"),
-        .config = &buttonconfig_mainmenu,
-        .on_click = NULL,
+struct ButtonArray mainmenu_buttonarray = {
+    .selected = BUTTON_NONE,
+    .length = NUM_MAINMENU_BUTTONS,
+    .buttons = mainmenu_buttons,
+    .buttonconfig = &buttonconfig_menu,
+    .layout = (Clay_LayoutConfig) {
+        .sizing = { .width = CLAY_SIZING_GROW(0), .height = CLAY_SIZING_GROW(0) },
+        .padding = { .top = 24, .bottom = 24, .left = 24, .right = 24 },
+        .childGap = (12),
+        .layoutDirection = CLAY_TOP_TO_BOTTOM
     }
 };
 
-struct Button playrandom_button = {
+struct Button playbutton_tutorial = {
+    .id = PLAY_BUTTON_TUTORIAL,
+    .label = CLAY_STRING("Tutorial"),
+    .on_click = NULL,
+};
+
+struct Button playbutton_campaign = {
+        .id = PLAY_BUTTON_CAMPAIGN,
+        .label = CLAY_STRING("Campaign"),
+        .on_click = NULL,
+};
+
+struct Button playbutton_random = {
     .id = PLAY_BUTTON_RANDOM,
     .label = CLAY_STRING("Play Now"),
-    .config = &buttonconfig_mainmenu,
     .on_click = action_start_random_game,
 };
 
@@ -292,21 +330,7 @@ void mainmenu_hover(Clay_ElementId clay_id, Clay_PointerData mouse, intptr_t dat
 {
     (void)clay_id;
     if (mouse.state != CLAY_POINTER_DATA_PRESSED_THIS_FRAME) return;
-
-    enum BUTTON_ID id = (enum BUTTON_ID) data;
-    if (id == mainmenu_selected) {
-        mainmenu_selected = BUTTON_NONE;
-        return;
-    }
-
-    for (size_t i = 0; i < NUM_MAINMENU_BUTTONS; i++) {
-        if (mainmenu_buttons[i].id != id) {
-            if (mainmenu_buttons[i].down) { mainmenu_buttons[i].down = false; }
-            continue;
-        }
-        mainmenu_selected = mainmenu_buttons[i].id;
-        button_click(&mainmenu_buttons[i]);
-    }
+    buttonarray_click((enum BUTTON_ID) data, &mainmenu_buttonarray);
 }
 
 void mainmenu_render_divline(void)
@@ -355,11 +379,8 @@ void mainmenu_render_playpanel(void)
                 .sizing = { .width = CLAY_SIZING_PERCENT(0.5) },
             })
         ) {
-            button_render_array(
-                playcampaign_buttons,
-                NUM_PLAYCAMPAIGN_BUTTONS,
-                CLAY_TOP_TO_BOTTOM
-            );
+            button_render(&playbutton_tutorial, &buttonconfig_menu);
+            button_render(&playbutton_campaign, &buttonconfig_menu);
         }
 
         CLAY(
@@ -446,7 +467,7 @@ void mainmenu_render_playpanel(void)
         })
     ) {
         CLAY( CLAY_LAYOUT({ .sizing = { .width = CLAY_SIZING_PERCENT(0.6) } }) ) {}
-        button_render(&playrandom_button);
+        button_render(&playbutton_random, &buttonconfig_menu);
     }
 
     mainmenu_render_divline();
@@ -538,7 +559,7 @@ void mainmenu_render_sidepanel(void)
         )
 
         {
-            switch (mainmenu_selected) {
+            switch (mainmenu_buttonarray.selected) {
                 case MAIN_BUTTON_PLAY:
                     mainmenu_render_playpanel();
                     break;
@@ -584,14 +605,10 @@ Clay_RenderCommandArray interface_renderer_mainmenu()
         {
             CLAY(CLAY_LAYOUT({ .sizing = { .height = CLAY_SIZING_GROW(0) } })) {}
             mainmenu_render_title();
-            button_render_array(
-                mainmenu_buttons,
-                NUM_MAINMENU_BUTTONS,
-                CLAY_TOP_TO_BOTTOM
-            );
+            buttonarray_render(&mainmenu_buttonarray);
         }
 
-        if (mainmenu_selected != BUTTON_NONE) {
+        if (mainmenu_buttonarray.selected != BUTTON_NONE) {
             mainmenu_render_sidepanel();
         }
     }
@@ -601,6 +618,13 @@ Clay_RenderCommandArray interface_renderer_mainmenu()
 
 
 /*  IN-GAME     ***********************************************************************/
+
+
+void gamebar_hover(Clay_ElementId clay_id, Clay_PointerData mouse, intptr_t data)
+{
+    (void)clay_id;
+    if (mouse.state != CLAY_POINTER_DATA_PRESSED_THIS_FRAME) return;
+}
 
 
 /*  IN-GAME     //  TOP BAR     *******************************************************/
@@ -632,13 +656,27 @@ void ingame_render_topbar(void)
 /*  IN-GAME     //  BOTTOM BAR  *******************************************************/
 
 
-#define NUM_BOTBAR_BUTTONS 2
-struct Button botbar_buttons[NUM_BOTBAR_BUTTONS] = {
+#define NUM_BOTTOMBAR_BUTTONS 1
+struct Button bottombar_buttons[NUM_BOTTOMBAR_BUTTONS] = {
     button_test
 };
 
 
-void ingame_render_botbar()
+struct ButtonArray bottombar_buttonarray = {
+    .selected = BUTTON_NONE,
+    .length = NUM_BOTTOMBAR_BUTTONS,
+    .buttons = bottombar_buttons,
+    .buttonconfig = &buttonconfig_primary,
+    .layout = (Clay_LayoutConfig) {
+        .sizing = { .width = CLAY_SIZING_FIT(0), .height = CLAY_SIZING_FIXED(24) },
+        .padding = { .top = 3, .bottom = 3, .left = 3, .right = 3 },
+        .childGap = (6),
+        .layoutDirection = CLAY_LEFT_TO_RIGHT
+    }
+};
+
+
+void ingame_render_bottombar()
 {
     CLAY(
         CLAY_ID("InGameBotBar"),
@@ -656,10 +694,12 @@ void ingame_render_botbar()
     {
         CLAY(
             CLAY_LAYOUT({
-                .sizing = { .width = 120, .height = CLAY_SIZING_GROW(0) }
+                .sizing = { .width = CLAY_SIZING_FIT(0), .height = CLAY_SIZING_GROW(0) }
             }),
             CLAY_RECTANGLE({ .color = colour_panel_primary_accent, .cornerRadius = 3 })
-        ) { }
+        ) {
+            buttonarray_render(&bottombar_buttonarray);
+        }
     }
 }
 
@@ -688,7 +728,7 @@ Clay_RenderCommandArray interface_renderer_ingame(void)
             })
         ) {}
 
-        ingame_render_botbar();
+        ingame_render_bottombar();
     }
 
     return Clay_EndLayout();
@@ -779,7 +819,7 @@ void interface_render(void)
 
 void interface_reset(void)
 {
-    mainmenu_selected = BUTTON_NONE;
+    mainmenu_buttonarray.selected = BUTTON_NONE;
 }
 
 

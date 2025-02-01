@@ -50,14 +50,17 @@ void clay_stderr(Clay_ErrorData error_data)
 
 
 /*--------------------------------------------------------------------------------------
- *  
+ *
  *  GENERIC ELEMENTS
  *
  */
 
 
+/*  BUTTONS     ***********************************************************************/
+
+
 enum BUTTON_ID {
-    MENU_BUTTON_NONE,
+    MENU_BUTTON_NONE = 0,
     MENU_BUTTON_TEST,
     MAIN_BUTTON_PLAY,
     MAIN_BUTTON_SETTINGS,
@@ -71,6 +74,7 @@ enum BUTTON_ID {
 
 struct Button {
     enum BUTTON_ID id;
+    bool down;
     Clay_String label;
     struct ButtonConfig *config;
     void (*on_hover)(Clay_ElementId id, Clay_PointerData mouse, intptr_t data);
@@ -112,8 +116,53 @@ struct ButtonConfig buttonconfig_sidepanel = {
 };
 
 
+void button_render(struct Button *button)
+{
+    CLAY(
+        CLAY_LAYOUT(button->config->layout),
+        Clay_OnHover(button->on_hover, button->id),
+        (button->down)
+            ? CLAY_RECTANGLE(button->config->rectangle_down)
+            : (
+                Clay_Hovered()
+                    ? CLAY_RECTANGLE(button->config->rectangle_hover)
+                    : CLAY_RECTANGLE(button->config->rectangle_up)
+            )
+    ) {
+        CLAY_TEXT(
+            button->label,
+            CLAY_TEXT_CONFIG(button->config->text)
+        );
+    }
+}
+
+
+void button_render_array(struct Button *buttons, size_t n, Clay_LayoutDirection d)
+{
+    CLAY(
+        CLAY_LAYOUT({
+            .sizing = { .width = CLAY_SIZING_GROW(0), .height = CLAY_SIZING_GROW(0) },
+            .padding = CLAY_PADDING_ALL(18),
+            .childGap = 12,
+            .layoutDirection = d,
+        })
+    ) {
+        for (size_t i = 0; i < n; i++) {
+            button_render(&buttons[i]);
+        }
+    }
+}
+
+
+void button_click(struct Button *b)
+{
+    b->down = !b->down;
+    if ((b->down) && (b->on_click)) b->on_click();
+}
+
+
 /*--------------------------------------------------------------------------------------
- *  
+ *
  *  INTERFACES
  *
  */
@@ -123,7 +172,7 @@ struct ButtonConfig buttonconfig_sidepanel = {
 
 
 enum BUTTON_ID mainmenu_selected = MENU_BUTTON_NONE;
-void mainmenu_mouseover(Clay_ElementId id, Clay_PointerData mouse, intptr_t data);
+void mainmenu_hover(Clay_ElementId id, Clay_PointerData mouse, intptr_t data);
 
 #define NUM_MAINMENU_BUTTONS 4
 struct Button mainmenu_buttons[NUM_MAINMENU_BUTTONS] = {
@@ -131,28 +180,28 @@ struct Button mainmenu_buttons[NUM_MAINMENU_BUTTONS] = {
         .id = MAIN_BUTTON_PLAY,
         .label = CLAY_STRING("Play"),
         .config = &buttonconfig_mainmenu,
-        .on_hover = mainmenu_mouseover,
+        .on_hover = mainmenu_hover,
         .on_click = NULL
     },
     {
         .id = MAIN_BUTTON_SETTINGS,
         .label = CLAY_STRING("Settings"),
         .config = &buttonconfig_mainmenu,
-        .on_hover = mainmenu_mouseover,
+        .on_hover = mainmenu_hover,
         .on_click = NULL
     },
     {
         .id = MAIN_BUTTON_ABOUT,
         .label = CLAY_STRING("About"),
         .config = &buttonconfig_mainmenu,
-        .on_hover = mainmenu_mouseover,
+        .on_hover = mainmenu_hover,
         .on_click = NULL
     },
     {
         .id = MAIN_BUTTON_EXIT,
         .label = CLAY_STRING("Exit"),
         .config = &buttonconfig_mainmenu,
-        .on_hover = mainmenu_mouseover,
+        .on_hover = mainmenu_hover,
         .on_click = action_quit
     }
 };
@@ -177,7 +226,7 @@ struct Button playrandom_button = {
     .id = PLAY_BUTTON_RANDOM,
     .label = CLAY_STRING("Play Now"),
     .config = &buttonconfig_sidepanel,
-    .on_hover = mainmenu_mouseover,
+    .on_hover = mainmenu_hover,
     .on_click = action_start_random_game,
 };
 
@@ -210,7 +259,7 @@ void mainmenu_render_title(void)
     }
 }
 
-void mainmenu_mouseover(Clay_ElementId clay_id, Clay_PointerData mouse, intptr_t data)
+void mainmenu_hover(Clay_ElementId clay_id, Clay_PointerData mouse, intptr_t data)
 {
     (void)clay_id;
     if (mouse.state != CLAY_POINTER_DATA_PRESSED_THIS_FRAME) return;
@@ -222,29 +271,12 @@ void mainmenu_mouseover(Clay_ElementId clay_id, Clay_PointerData mouse, intptr_t
     }
 
     for (size_t b = 0; b < NUM_MAINMENU_BUTTONS; b++) {
-        if (mainmenu_buttons[b].id != id) continue;
+        if (mainmenu_buttons[b].id != id) {
+            if (mainmenu_buttons[b].down) { mainmenu_buttons[b].down = false; }
+            continue;
+        }
         mainmenu_selected = mainmenu_buttons[b].id;
-        if (mainmenu_buttons[b].on_click) mainmenu_buttons[b].on_click();
-    }
-
-    if (id == PLAY_BUTTON_RANDOM) playrandom_button.on_click();
-}
-
-void mainmenu_render_button(struct Button *button)
-{
-    CLAY(
-        CLAY_LAYOUT(button->config->layout),
-        Clay_OnHover(button->on_hover, button->id),
-        Clay_Hovered()
-            ? CLAY_RECTANGLE(button->config->rectangle_hover)
-            : CLAY_RECTANGLE(button->config->rectangle_up)
-    )
-
-    {
-        CLAY_TEXT(
-            button->label,
-            CLAY_TEXT_CONFIG(button->config->text)
-        );
+        button_click(&mainmenu_buttons[b]);
     }
 }
 
@@ -292,14 +324,13 @@ void mainmenu_render_playpanel(void)
             CLAY_ID("MainMenuPlayPanelCampaignButtons"),
             CLAY_LAYOUT({
                 .sizing = { .width = CLAY_SIZING_PERCENT(0.5) },
-                .padding = CLAY_PADDING_ALL(18),
-                .childGap = 12,
-                .layoutDirection = CLAY_TOP_TO_BOTTOM,
             })
         ) {
-            for (size_t b = 0; b < NUM_PLAYCAMPAIGN_BUTTONS; b++) {
-                mainmenu_render_button(&playcampaign_buttons[b]);
-            }
+            button_render_array(
+                playcampaign_buttons,
+                NUM_PLAYCAMPAIGN_BUTTONS,
+                CLAY_TOP_TO_BOTTOM
+            );
         }
 
         CLAY(
@@ -329,7 +360,7 @@ void mainmenu_render_playpanel(void)
                 );
 
                 CLAY (
-                    CLAY_LAYOUT({ 
+                    CLAY_LAYOUT({
                         .sizing = { .width = CLAY_SIZING_GROW(0) },
                         .childAlignment = { .x = CLAY_ALIGN_X_CENTER },
                         .padding = CLAY_PADDING_ALL(6)
@@ -362,7 +393,7 @@ void mainmenu_render_playpanel(void)
 
     /* dropdowns/sliders/options */
 
-    /* 
+    /*
      *  map_size slider
      *  difficulty slider
      *  map_region dropdown
@@ -374,7 +405,6 @@ void mainmenu_render_playpanel(void)
      *      water toggle y/n
      *      ruggedness slider
      *      ???
-     *
      * */
 
     mainmenu_render_subheading(CLAY_STRING("Random Map"));
@@ -388,7 +418,7 @@ void mainmenu_render_playpanel(void)
         })
     ) {
         CLAY( CLAY_LAYOUT({ .sizing = { .width = CLAY_SIZING_PERCENT(0.6) } }) ) {}
-        mainmenu_render_button(&playrandom_button);
+        button_render(&playrandom_button);
     }
 
     mainmenu_render_divline();
@@ -526,21 +556,11 @@ Clay_RenderCommandArray interface_renderer_mainmenu()
         {
             CLAY(CLAY_LAYOUT({ .sizing = { .height = CLAY_SIZING_GROW(0) } })) {}
             mainmenu_render_title();
-            for (size_t b = 0; b < NUM_MAINMENU_BUTTONS; b++) {
-                if (mainmenu_buttons[b].id == mainmenu_selected) {
-                    CLAY(
-                        CLAY_LAYOUT(mainmenu_buttons[b].config->layout),
-                        CLAY_RECTANGLE(mainmenu_buttons[b].config->rectangle_down)
-                    ) {
-                        CLAY_TEXT(
-                            mainmenu_buttons[b].label,
-                            CLAY_TEXT_CONFIG(mainmenu_buttons[b].config->text)
-                        );
-                    }
-                } else {
-                    mainmenu_render_button(&mainmenu_buttons[b]);
-                }
-            }
+            button_render_array(
+                mainmenu_buttons,
+                NUM_MAINMENU_BUTTONS,
+                CLAY_TOP_TO_BOTTOM
+            );
         }
 
         if (mainmenu_selected != MENU_BUTTON_NONE) {

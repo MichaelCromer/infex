@@ -1,1 +1,2 @@
-[ ] Make the vertex grid be internal (fully surrounded) vertices only
+[X] Make the vertex grid be internal (fully surrounded) vertices only
+[ ] test whether it is faster to generate face geometry on-the-fly (vs memoisation)

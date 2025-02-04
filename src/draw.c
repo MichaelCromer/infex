@@ -5,11 +5,13 @@
 #include "hdr/mouse.h"
 #include "hdr/world.h"
 
+
 typedef struct InfexDrawAsset {
     Texture2D texture;
     Rectangle bounds;
     Vector2 centre;
 } InfexDrawAsset;
+
 
 void asset_load(InfexDrawAsset *asset, const char *file_name)
 {
@@ -21,6 +23,7 @@ void asset_load(InfexDrawAsset *asset, const char *file_name)
     };
 }
 
+
 void asset_unload(InfexDrawAsset *asset)
 {
     UnloadTexture(asset->texture);
@@ -28,17 +31,21 @@ void asset_unload(InfexDrawAsset *asset)
     asset->centre = (Vector2) { 0 };
 }
 
+
 InfexDrawAsset hex_tile = { 0 };
+
 
 void draw_initialise(void)
 {
     asset_load(&hex_tile, "res/img/hex_test5.png");
 }
 
+
 void draw_terminate(void)
 {
     asset_unload(&hex_tile);
 }
+
 
 void draw_enemy(void)
 {
@@ -52,6 +59,7 @@ void draw_enemy(void)
         DrawPoly(grid_face(i), 6, scale - 6, 30.0f, colour);
     }
 }
+
 
 void draw_edge(size_t i, enum GRID_DIR d)
 {
@@ -79,12 +87,14 @@ void draw_edge(size_t i, enum GRID_DIR d)
     DrawLineEx(start, end, weight, BLACK);
 }
 
+
 void draw_slopes(size_t i)
 {
     for (enum GRID_DIR d = 0; d < NUM_GRID_DIRS; d++) {
         if (map_slope(i, d)) draw_edge(i, d);
     }
 }
+
 
 void draw_tile(Vector2 pos, Color colour)
 {
@@ -97,6 +107,7 @@ void draw_tile(Vector2 pos, Color colour)
         colour
     );
 }
+
 
 void draw_map_debug(void)
 {
@@ -112,6 +123,7 @@ void draw_map_debug(void)
     }
 }
 
+
 void draw_map(void)
 {
     Vector2 *faces = grid_faces();
@@ -125,25 +137,29 @@ void draw_map(void)
     if (is_debug()) draw_map_debug();
 }
 
+
 void draw_world(void)
 {
     draw_map();
     draw_enemy();
 }
 
+
 void draw_mouse(void)
 {
-    if (mouse_is_track()) {
+    if (is_building_shadow()) {
         float scale = grid_scale();
         DrawPoly(grid_face(mouse_face()), 6, scale/4, 30.0f, YELLOW);
         DrawPoly(grid_vert(mouse_vert()), 6, scale/4, 30.0f, RED);
     }
 }
 
+
 void draw_interface(void)
 {
     interface_render();
 }
+
 
 void draw_screen_title(void)
 {
@@ -152,6 +168,7 @@ void draw_screen_title(void)
     draw_interface();
     EndMode2D();
 }
+
 
 void draw_screen_game(void)
 {
@@ -165,11 +182,13 @@ void draw_screen_game(void)
     EndMode2D();
 }
 
+
 void draw_screen_none(void)
 {
     DrawRectangle(0, 0, screen_width(), screen_height(), LIGHTGRAY);
     DrawText("NULL Screen", 20, 20, 40, GRAY);
 }
+
 
 void draw_screen(void)
 {

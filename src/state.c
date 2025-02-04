@@ -11,6 +11,8 @@
 bool quit = false;
 bool debug = false;
 
+bool building_shadow = false;
+
 enum INFEX_SCREEN screen;
 int width = 0;
 int height = 0;
@@ -33,6 +35,16 @@ bool is_debug(void)
 void set_debug(bool b)
 {
     debug = b;
+}
+
+bool is_building_shadow(void)
+{
+    return building_shadow;
+}
+
+void set_building_shadow(bool b)
+{
+    building_shadow = b;
 }
 
 enum INFEX_SCREEN screen_curr(void)

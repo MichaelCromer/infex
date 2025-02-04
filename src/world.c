@@ -96,28 +96,6 @@ typedef enum {
     RESOURCE_ORGANIC,
 } RESOURCE;
 
-typedef float Resource[3];
-
-/* Player - Building */
-typedef enum {
-    BUILDING_NONE,
-    BUILDING_COMMAND_CENTRE,
-    BUILDING_GENERATOR_POWER,
-    BUILDING_GENERATOR_MINERAL,
-    BUILDING_GENERATOR_ORGANIC,
-    BUILDING_STORAGE_POWER,
-    BUILDING_STORAGE_MINERAL,
-    BUILDING_STORAGE_ORGANIC
-} BUILDING;
-
-typedef struct {
-    BUILDING type;
-    size_t position;
-} Building;
-
-Building *buildings[MAX_TILES];         /* for tracking all owned tiles */
-
-
 /*--------------------------------------------------------------------------------------
  *
  *  GRID
@@ -385,6 +363,10 @@ void map_gen_renormalise(void)
     for (size_t i = 0; i < grid_num_faces(); i++) {
         heights[i] = floor((heights[i] - min)*factor);
     }
+
+    for (size_t r = 0; r < num_rows; r++) {
+        for (size_t c = 0; c < num_cols; c++) {
+
 }
 
 

@@ -8,6 +8,9 @@ void set_quit(bool b);
 bool is_debug(void);
 void set_debug(bool b);
 
+bool is_building_shadow(void);
+void set_building_shadow(bool b);
+
 enum INFEX_SCREEN screen_curr(void);
 void screen_set_curr(enum INFEX_SCREEN s);
 int screen_width(void);

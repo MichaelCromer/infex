@@ -93,6 +93,8 @@ enum BUTTON_ID {
     PLAY_BUTTON_TUTORIAL,
     PLAY_BUTTON_CAMPAIGN,
     PLAY_BUTTON_RANDOM,
+    BOTTOMBAR_BUTTON_BUILD1,
+    BOTTOMBAR_BUTTON_BUILD2,
 };
 
 
@@ -152,7 +154,7 @@ struct ButtonConfig buttonconfig_menu = {
  */
 struct ButtonConfig buttonconfig_primary = {
     .layout = {
-        .sizing = { .width = CLAY_SIZING_FIT(0), .height = CLAY_SIZING_PERCENT(0.9)},
+        .sizing = { .width = CLAY_SIZING_FIXED(60), .height = CLAY_SIZING_PERCENT(0.9)},
         .childAlignment = { .x = CLAY_ALIGN_X_CENTER, .y = CLAY_ALIGN_Y_CENTER }
     },
     .rectangle_up = { .color = colour_button_primary_up, .cornerRadius = 6 },
@@ -245,25 +247,21 @@ struct Button mainmenu_buttons[NUM_MAINMENU_BUTTONS] = {
         .id = MAIN_BUTTON_PLAY,
         .label = CLAY_STRING("Play"),
         .on_hover = mainmenu_hover,
-        .on_click = NULL
     },
     {
         .id = MAIN_BUTTON_SETTINGS,
         .label = CLAY_STRING("Settings"),
         .on_hover = mainmenu_hover,
-        .on_click = NULL
     },
     {
         .id = MAIN_BUTTON_ABOUT,
         .label = CLAY_STRING("About"),
         .on_hover = mainmenu_hover,
-        .on_click = NULL
     },
     {
         .id = MAIN_BUTTON_EXIT,
         .label = CLAY_STRING("Exit"),
         .on_hover = mainmenu_hover,
-        .on_click = action_quit
     }
 };
 
@@ -283,19 +281,16 @@ struct ButtonArray mainmenu_buttonarray = {
 struct Button playbutton_tutorial = {
     .id = PLAY_BUTTON_TUTORIAL,
     .label = CLAY_STRING("Tutorial"),
-    .on_click = NULL,
 };
 
 struct Button playbutton_campaign = {
         .id = PLAY_BUTTON_CAMPAIGN,
         .label = CLAY_STRING("Campaign"),
-        .on_click = NULL,
 };
 
 struct Button playbutton_random = {
     .id = PLAY_BUTTON_RANDOM,
     .label = CLAY_STRING("Play Now"),
-    .on_click = action_start_random_game,
 };
 
 Clay_String current_profile = CLAY_STRING("<None>");
@@ -333,6 +328,7 @@ void mainmenu_hover(Clay_ElementId clay_id, Clay_PointerData mouse, intptr_t dat
     buttonarray_click((enum BUTTON_ID) data, &mainmenu_buttonarray);
 }
 
+
 void mainmenu_render_divline(void)
 {
     CLAY(
@@ -340,6 +336,7 @@ void mainmenu_render_divline(void)
         CLAY_RECTANGLE({ .color =  colour_panel_menu_accent })
     ) {}
 }
+
 
 void mainmenu_render_subheader(Clay_String title_text)
 {
@@ -358,6 +355,7 @@ void mainmenu_render_subheader(Clay_String title_text)
         );
     }
 }
+
 
 void mainmenu_render_playpanel(void)
 {
@@ -620,12 +618,6 @@ Clay_RenderCommandArray interface_renderer_mainmenu()
 /*  IN-GAME     ***********************************************************************/
 
 
-void gamebar_hover(Clay_ElementId clay_id, Clay_PointerData mouse, intptr_t data)
-{
-    (void)clay_id;
-    if (mouse.state != CLAY_POINTER_DATA_PRESSED_THIS_FRAME) return;
-}
-
 
 /*  IN-GAME     //  TOP BAR     *******************************************************/
 
@@ -656,9 +648,20 @@ void ingame_render_topbar(void)
 /*  IN-GAME     //  BOTTOM BAR  *******************************************************/
 
 
-#define NUM_BOTTOMBAR_BUTTONS 1
+void bottombar_hover(Clay_ElementId clay_id, Clay_PointerData mouse, intptr_t data);
+
+#define NUM_BOTTOMBAR_BUTTONS 2
 struct Button bottombar_buttons[NUM_BOTTOMBAR_BUTTONS] = {
-    button_test
+    {
+        .id = BOTTOMBAR_BUTTON_BUILD1,
+        .label = CLAY_STRING("Build 1"),
+        .on_hover = bottombar_hover,
+    },
+    {
+        .id = BOTTOMBAR_BUTTON_BUILD2,
+        .label = CLAY_STRING("Build 2"),
+        .on_hover = bottombar_hover,
+    }
 };
 
 
@@ -668,12 +671,21 @@ struct ButtonArray bottombar_buttonarray = {
     .buttons = bottombar_buttons,
     .buttonconfig = &buttonconfig_primary,
     .layout = (Clay_LayoutConfig) {
-        .sizing = { .width = CLAY_SIZING_FIT(0), .height = CLAY_SIZING_FIXED(24) },
-        .padding = { .top = 3, .bottom = 3, .left = 3, .right = 3 },
-        .childGap = (6),
+        .sizing = { .width = CLAY_SIZING_GROW(0), .height = CLAY_SIZING_GROW(0) },
+        .childAlignment = { .y = CLAY_ALIGN_Y_CENTER },
+        .padding = { .top = 6, .bottom = 6, .left = 12, .right = 12 },
+        .childGap = (12),
         .layoutDirection = CLAY_LEFT_TO_RIGHT
     }
 };
+
+
+void bottombar_hover(Clay_ElementId clay_id, Clay_PointerData mouse, intptr_t data)
+{
+    (void)clay_id;
+    if (mouse.state != CLAY_POINTER_DATA_PRESSED_THIS_FRAME) return;
+    buttonarray_click((enum BUTTON_ID) data, &bottombar_buttonarray);
+}
 
 
 void ingame_render_bottombar()
@@ -735,6 +747,24 @@ Clay_RenderCommandArray interface_renderer_ingame(void)
 }
 
 
+void interface_update_ingame(void)
+{
+    if (IsKeyPressed(KEY_ONE)) {
+        buttonarray_click(BOTTOMBAR_BUTTON_BUILD1, &bottombar_buttonarray);
+    } else if (IsKeyPressed(KEY_TWO)) {
+        buttonarray_click(BOTTOMBAR_BUTTON_BUILD2, &bottombar_buttonarray);
+    }
+
+    switch (bottombar_buttonarray.selected) {
+        case BOTTOMBAR_BUTTON_BUILD1:
+            action_building_shadow(BUILDING_TEST_1);
+            break;
+        default:
+            action_building_shadow(BUILDING_NONE);
+            break;
+    }
+}
+
 /*--------------------------------------------------------------------------------------
  *
  * INTERFACE MANAGERS
@@ -783,6 +813,25 @@ Clay_RenderCommandArray interface_renderer_fallback()
 }
 
 
+void interface_render(void)
+{
+    switch (screen_curr()) {
+        case INFEX_SCREEN_MAINMENU:
+            interface_renderer = interface_renderer_mainmenu;
+            break;
+        case INFEX_SCREEN_GAME:
+            interface_renderer = interface_renderer_ingame;
+            break;
+        default:
+            interface_renderer = interface_renderer_fallback;
+            break;
+    }
+    render_commands = interface_renderer();
+    /* TODO threading ? */
+    Clay_Raylib_Render(render_commands);
+}
+
+
 void interface_update(float dt)
 {
     (void)dt;
@@ -795,25 +844,12 @@ void interface_update(float dt)
     );
 
     switch (screen_curr()) {
-        case INFEX_SCREEN_MAINMENU:
-            interface_renderer = interface_renderer_mainmenu;
-            break;
         case INFEX_SCREEN_GAME:
-            interface_renderer = interface_renderer_ingame;
+            interface_update_ingame();
             break;
         default:
-            interface_renderer = interface_renderer_fallback;
             break;
     }
-
-    render_commands = interface_renderer();
-}
-
-
-void interface_render(void)
-{
-    /* TODO threading ? */
-    Clay_Raylib_Render(render_commands);
 }
 
 

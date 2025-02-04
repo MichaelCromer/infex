@@ -364,9 +364,31 @@ void map_gen_renormalise(void)
         heights[i] = floor((heights[i] - min)*factor);
     }
 
-    for (size_t r = 0; r < num_rows; r++) {
-        for (size_t c = 0; c < num_cols; c++) {
-
+    size_t i = 0, j = 0, k = 0;
+    size_t m = 0;
+    bool done = false;
+    while (!done) {
+        done = true;
+        for (size_t r = 0; r < num_rows - 1; r++) {
+            i = r * num_cols;
+            j = i + 1;
+            k = i + num_cols + ((r % 2) ? 1 : 0);
+            for (size_t c = 0; c < num_cols - 1; c++) {
+                if ((heights[i] != heights[j])
+                    && (heights[j] != heights[k])
+                    && (heights[k] != heights[i])
+                ) {
+                    m = (heights[i] > heights[j]) ? j : i;
+                    m = (heights[k] > heights[m]) ? m : k;
+                    heights[m]++;
+                    done = false;
+                }
+                i++;
+                j++;
+                k++;
+            }
+        }
+    }
 }
 
 

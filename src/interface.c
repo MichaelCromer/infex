@@ -208,7 +208,7 @@ void button_click(struct Button *button)
  *  ButtonArrays handle mutually exclusive options
  *  Only one can be active at a time
  */
-void buttonarray_click(enum BUTTON_ID clicked, struct ButtonArray *buttonarray)
+void buttonarray_click(struct ButtonArray *buttonarray, enum BUTTON_ID clicked)
 {
     buttonarray->selected = BUTTON_NONE;
     for (size_t i = 0; i < buttonarray->length; i++) {
@@ -325,7 +325,7 @@ void mainmenu_hover(Clay_ElementId clay_id, Clay_PointerData mouse, intptr_t dat
 {
     (void)clay_id;
     if (mouse.state != CLAY_POINTER_DATA_PRESSED_THIS_FRAME) return;
-    buttonarray_click((enum BUTTON_ID) data, &mainmenu_buttonarray);
+    buttonarray_click(&mainmenu_buttonarray, (enum BUTTON_ID) data);
 }
 
 
@@ -687,7 +687,7 @@ void bottombar_hover(Clay_ElementId clay_id, Clay_PointerData mouse, intptr_t da
 {
     (void)clay_id;
     if (mouse.state != CLAY_POINTER_DATA_PRESSED_THIS_FRAME) return;
-    buttonarray_click((enum BUTTON_ID) data, &bottombar_buttonarray);
+    buttonarray_click(&bottombar_buttonarray, (enum BUTTON_ID) data);
 }
 
 
@@ -753,9 +753,9 @@ Clay_RenderCommandArray interface_renderer_ingame(void)
 void interface_update_ingame(void)
 {
     if (IsKeyPressed(KEY_ONE)) {
-        buttonarray_click(BOTTOMBAR_BUTTON_BUILD1, &bottombar_buttonarray);
+        buttonarray_click(&bottombar_buttonarray, BOTTOMBAR_BUTTON_BUILD1);
     } else if (IsKeyPressed(KEY_TWO)) {
-        buttonarray_click(BOTTOMBAR_BUTTON_BUILD2, &bottombar_buttonarray);
+        buttonarray_click(&bottombar_buttonarray, BOTTOMBAR_BUTTON_BUILD2);
     }
 
     switch (bottombar_buttonarray.selected) {
@@ -858,7 +858,8 @@ void interface_update(float dt)
 
 void interface_reset(void)
 {
-    mainmenu_buttonarray.selected = BUTTON_NONE;
+    buttonarray_click(&mainmenu_buttonarray, BUTTON_NONE);
+    buttonarray_click(&bottombar_buttonarray, BUTTON_NONE);
 }
 
 

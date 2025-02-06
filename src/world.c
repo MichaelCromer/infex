@@ -550,6 +550,7 @@ void world_initialise(uint16_t rows, uint16_t cols)
 void world_clear(void)
 {
     e_score = 0;
+    b_next = 1;
     for (uint16_t i = 0; i < num_faces; i++) {
         heights[i] = 0;
         slopes[i] = 0;

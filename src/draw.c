@@ -33,79 +33,53 @@ void asset_unload(InfexDrawAsset *asset)
 
 
 InfexDrawAsset hex_tile = { 0 };
+InfexDrawAsset building_test = { 0 };
 
+#define NUM_EDGE_ASSETS 13
+InfexDrawAsset hex_edge[NUM_EDGE_ASSETS] = { 0 };
 
 void draw_initialise(void)
 {
     asset_load(&hex_tile, "res/img/hex_test5.png");
+    asset_load(&building_test, "res/img/building1_test.png");
+
+    asset_load(&(hex_edge[0]), "res/img/hex_edge_0000.png");
+    asset_load(&(hex_edge[1]), "res/img/hex_edge_0001.png");
+    asset_load(&(hex_edge[2]), "res/img/hex_edge_0010.png");
+    asset_load(&(hex_edge[3]), "res/img/hex_edge_0011.png");
+    asset_load(&(hex_edge[4]), "res/img/hex_edge_0101.png");
+    asset_load(&(hex_edge[5]), "res/img/hex_edge_0110.png");
+    asset_load(&(hex_edge[6]), "res/img/hex_edge_0111.png");
+    asset_load(&(hex_edge[7]), "res/img/hex_edge_1001.png");
+    asset_load(&(hex_edge[8]), "res/img/hex_edge_1010.png");
+    asset_load(&(hex_edge[9]), "res/img/hex_edge_1011.png");
+    asset_load(&(hex_edge[10]), "res/img/hex_edge_1101.png");
+    asset_load(&(hex_edge[11]), "res/img/hex_edge_1110.png");
+    asset_load(&(hex_edge[12]), "res/img/hex_edge_1111.png");
 }
 
 
 void draw_terminate(void)
 {
     asset_unload(&hex_tile);
+    asset_unload(&building_test);
+
+    for (size_t i = 0; i < NUM_EDGE_ASSETS; i++) {
+        asset_unload(&(hex_edge[i]));
+    }
 }
 
 
 void draw_enemy(void)
 {
     float *enemy = enemy_state();
-    float scale = grid_scale();
     for (size_t i = 0; i < grid_num_faces(); i++) {
         if (FloatEquals(enemy[i], 0.0f)) {
             continue;
         }
         Color colour = RED;
-        DrawPoly(grid_face(i), 6, scale - 6, 30.0f, colour);
+        DrawPoly(grid_face(i), 6, 20, 30.0f, colour);
     }
-}
-
-
-void draw_edge(size_t i, enum GRID_DIR d)
-{
-    uint8_t weight = 0;
-    switch (d) {
-        case DIR_NE:
-        case DIR_NW:
-            weight = 1;
-            break;
-        case DIR_EE:
-        case DIR_WW:
-            weight = 3;
-            break;
-        case DIR_SE:
-        case DIR_SW:
-            weight = 6;
-            break;
-        default:
-            break;
-    }
-
-    Vector2 start = grid_vertex_clockwise_from(i, d);
-    Vector2 end = grid_vertex_anticlockwise_from(i, d);
-
-    DrawLineEx(start, end, weight, BLACK);
-}
-
-
-void draw_slopes(size_t i)
-{
-    for (enum GRID_DIR d = 0; d < NUM_GRID_DIRS; d++) {
-        if (map_slope(i, d)) draw_edge(i, d);
-    }
-}
-
-
-void draw_tile(Vector2 pos, Color colour)
-{
-    DrawTexturePro(
-        hex_tile.texture,
-        hex_tile.bounds,
-        (Rectangle) { pos.x, pos.y, hex_tile.texture.width, hex_tile.texture.height },
-        hex_tile.centre,
-        0,
-        colour
-    );
 }
 
 
@@ -127,11 +101,40 @@ void draw_map_debug(void)
 void draw_map(void)
 {
     Vector2 *faces = grid_faces();
+    Vector2 *vertices = grid_vertices();
     Color *colours = map_colours();
+    uint8_t *slopes = map_slopes();
 
     for (size_t i = 0; i < grid_num_faces(); i++) {
-        draw_tile(faces[i], colours[i]);
-        draw_slopes(i);
+        DrawTexturePro(
+            hex_tile.texture,
+            hex_tile.bounds,
+            (Rectangle) {
+                faces[i].x,
+                faces[i].y,
+                hex_tile.texture.width,
+                hex_tile.texture.height
+            },
+            hex_tile.centre,
+            0,
+            colours[i]
+        );
+    }
+
+    for (size_t i = 0; i < grid_num_vertices(); i++) {
+        DrawTexturePro(
+            hex_edge[slopes[i]].texture,
+            hex_edge[slopes[i]].bounds,
+            (Rectangle) {
+                vertices[i].x,
+                vertices[i].y,
+                hex_edge[slopes[i]].texture.width,
+                hex_edge[slopes[i]].texture.height
+            },
+            hex_edge[slopes[i]].centre,
+            0,
+            WHITE
+        );
     }
 
     if (is_debug()) draw_map_debug();
@@ -148,9 +151,20 @@ void draw_world(void)
 void draw_mouse(void)
 {
     if (is_building_shadow()) {
-        float scale = grid_scale();
-        DrawPoly(grid_face(mouse_face()), 6, scale/4, 30.0f, YELLOW);
-        DrawPoly(grid_vert(mouse_vert()), 6, scale/4, 30.0f, RED);
+        Vector2 pos = grid_face(mouse_face());
+        DrawTexturePro(
+            building_test.texture,
+            building_test.bounds,
+            (Rectangle) {
+                pos.x,
+                pos.y,
+                building_test.texture.width,
+                building_test.texture.height
+            },
+            building_test.centre,
+            0,
+            (Color) { 255, 255, 255, 120 }
+        );
     }
 }
 

@@ -13,20 +13,14 @@ size_t grid_num_faces(void);
 size_t grid_num_vertices(void);
 size_t grid_num_rows(void);
 size_t grid_num_cols(void);
-float grid_scale(void);
-float grid_delta_row(void);
-float grid_delta_col(void);
-Vector2 grid_offset(void);
 Vector2 *grid_faces(void);
 Vector2 grid_face(size_t i);
 Vector2 *grid_vertices(void);
 Vector2 grid_vert(size_t i);
-Vector2 grid_vertex_clockwise_from(size_t i, enum GRID_DIR d);
-Vector2 grid_vertex_anticlockwise_from(size_t i, enum GRID_DIR d);
 
 /* MAP */
 Color *map_colours(void);
-bool map_slope(size_t i, enum GRID_DIR d);
+uint8_t *map_slopes(void);
 
 /* ENEMY */
 float *enemy_state(void);

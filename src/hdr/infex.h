@@ -40,5 +40,7 @@ enum BUILDING_ID {
     BUILDING_STORAGE_ORGANIC
 };
 
+#define DELTA_COL     (48)
+#define DELTA_ROW     (24)
 
 #endif

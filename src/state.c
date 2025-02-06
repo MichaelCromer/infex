@@ -11,61 +11,23 @@
 bool quit = false;
 bool debug = false;
 
-bool building_shadow = false;
-
 enum INFEX_SCREEN screen;
 int width = 0;
 int height = 0;
 
-bool is_quit(void)
-{
-    return quit;
-}
+enum BUILDING_ID shadow = BUILDING_NONE;
 
-void set_quit(bool b)
-{
-    quit = b;
-}
-
-bool is_debug(void)
-{
-    return debug;
-}
-
-void set_debug(bool b)
-{
-    debug = b;
-}
-
-bool is_building_shadow(void)
-{
-    return building_shadow;
-}
-
-void set_building_shadow(bool b)
-{
-    building_shadow = b;
-}
-
-enum INFEX_SCREEN screen_curr(void)
-{
-    return screen;
-}
-
-void screen_set_curr(enum INFEX_SCREEN s)
-{
-    screen = s;
-}
-
-int screen_width(void)
-{
-    return width;
-}
-
-int screen_height(void)
-{
-    return height;
-}
+bool is_quit(void) { return quit; }
+void set_quit(bool b) { quit = b; }
+bool is_debug(void) { return debug; }
+void set_debug(bool b) { debug = b; }
+bool is_building_shadow(void) { return shadow != BUILDING_NONE; }
+enum BUILDING_ID building_shadow(void) { return shadow; }
+void set_building_shadow(enum BUILDING_ID b) { shadow = b; }
+enum INFEX_SCREEN screen_curr(void) { return screen; }
+void screen_set_curr(enum INFEX_SCREEN s) { screen = s; }
+int screen_width(void) { return width; }
+int screen_height(void) { return height; }
 
 void state_initialise(void)
 {

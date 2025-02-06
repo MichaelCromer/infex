@@ -17,7 +17,7 @@ void mouse_set_track(bool b) { track = b; }
 
 void mouse_track(void)
 {
-    float u = (mouse.x / grid_delta_col()), v = (mouse.y / grid_delta_row());
+    float u = (mouse.x / DELTA_COL), v = (mouse.y / DELTA_ROW);
     float R = (grid_num_rows() - 1), C = (grid_num_cols() - 1);
 
     size_t r_vert = (size_t) round(Clamp(v - 0.5f, 0.0f, R - 1));

@@ -48,7 +48,6 @@ void state_update(void)
 
     if (IsKeyPressed(KEY_GRAVE)) {
         set_debug(!is_debug());
-        mouse_set_track(true);
     }
 
     switch (screen) {

@@ -26,6 +26,14 @@ uint8_t *map_slopes(void);
 float *enemy_state(void);
 float enemy_score(void);
 
+/* PLAYER */
+uint16_t player_num_buildings(void);
+/* PLAYER - BUILDING */
+enum FOOTPRINT_TYPE building_footprint_type(enum BUILDING_ID id);
+void building_create(const enum BUILDING_ID id, uint16_t grid_index);
+Vector2 *building_positions(void);
+uint8_t *building_textures(void);
+
 /* WORLD */
 void world_initialise(size_t rows, size_t cols);
 void world_generate(void);

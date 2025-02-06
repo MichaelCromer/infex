@@ -5,10 +5,7 @@
 #include "hdr/world.h"
 
 
-void action_quit(void)
-{
-    set_quit(true);
-}
+void action_quit(void) { set_quit(true); }
 
 
 void action_mainmenu_background_initialise(void)
@@ -30,12 +27,20 @@ void action_start_random_game(void)
 
 void action_building_shadow(enum BUILDING_ID b)
 {
-    if (b == BUILDING_NONE) {
-        mouse_set_track(false);
-        set_building_shadow(false);
-        return;
-    }
+    set_building_shadow(b);
+}
 
-    mouse_set_track(true);
-    set_building_shadow(true);
+
+void action_building_place(enum BUILDING_ID b)
+{
+    switch (building_footprint_type(b)) {
+        case FOOTPRINT_ONE:
+            building_create(b, mouse_face());
+            break;
+        case FOOTPRINT_THREE:
+            building_create(b, mouse_vert());
+            break;
+        default:
+            break;
+    }
 }

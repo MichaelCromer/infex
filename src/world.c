@@ -65,13 +65,22 @@ float e_tick = 0.0f;
 float e_score = 0.0f;
 
 /* Player       */
+Vector3 p_res_network = { 0 };  /* currently in-network         */
+Vector3 p_res_surplus = { 0 };  /* (generation - consumption)   */
+Vector3 p_res_current = { 0 };  /* currently in storage         */
+Vector3 p_res_storage = { 0 };  /* storage maximum              */
 
-/* Player - Resource */
-enum RESOURCE {
-    RESOURCE_POWER = 0,
-    RESOURCE_MINERAL,
-    RESOURCE_ORGANIC,
-};
+Vector3 b_res_internal[MAX_BUILDINGS] = { 0 };  /* available for use in buildings   */
+Vector3 b_res_external[MAX_BUILDINGS] = { 0 };  /* passing via buildings            */
+Vector3 b_res_upkeep[MAX_BUILDINGS] = { 0 };    /* required per tick                */
+Vector2 b_positions[MAX_BUILDINGS] = { 0 };     /* vector position on screen        */
+uint16_t b_footprints[MAX_TILES] = { 0 };       /* which grid tiles hit which bldgs */
+uint8_t b_texture_ids[MAX_BUILDINGS] = { 0 };                  /* which texture to use for each    */
+uint8_t b_hitpoints_current[MAX_BUILDINGS] = { 0 };            /* hp                               */
+uint8_t b_hitpoints_max[MAX_BUILDINGS] = { 0 };                /* max hp                           */
+
+/* buildings managed via swapback with NULLish first element */
+uint16_t b_next = 1;
 
 /*--------------------------------------------------------------------------------------
  *
@@ -492,12 +501,35 @@ void enemy_update(void)
  *
  */
 
-Vector3 p_res_network = { 0 };  /*  resource currently in-network       */
-Vector3 p_res_surplus = { 0 };  /*  resource generation - consumption   */
-Vector3 p_res_current = { 0 };  /*  resource currently in storage       */
-Vector3 p_res_storage = { 0 };  /*  resource storage maximum            */
+uint16_t player_num_buildings(void) { return b_next - 1; }
 
 
+/*--/   BUILDING    /-----------------------------------------------------------------*/
+
+uint8_t *building_textures(void) { return b_texture_ids; }
+Vector2 *building_positions(void) { return b_positions; }
+
+
+enum FOOTPRINT_TYPE building_footprint_type(enum BUILDING_ID id)
+{
+    switch (id) {
+        case BUILDING_TEST_1:
+            return FOOTPRINT_ONE;
+        case BUILDING_TEST_3:
+            return FOOTPRINT_THREE;
+        default:
+            return FOOTPRINT_NONE;
+    }
+}
+
+
+void building_create(const enum BUILDING_ID id, uint16_t grid_index)
+{
+    b_texture_ids[b_next] = id;
+    b_positions[b_next] = faces[grid_index];
+
+    b_next++;
+}
 
 
 /*--------------------------------------------------------------------------------------

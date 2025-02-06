@@ -33,7 +33,7 @@ void asset_unload(InfexDrawAsset *asset)
 
 
 InfexDrawAsset hex_tile = { 0 };
-InfexDrawAsset building_test = { 0 };
+InfexDrawAsset building[NUM_BUILDING_IDS] = { 0 };
 
 #define NUM_EDGE_ASSETS 13
 InfexDrawAsset hex_edge[NUM_EDGE_ASSETS] = { 0 };
@@ -41,7 +41,7 @@ InfexDrawAsset hex_edge[NUM_EDGE_ASSETS] = { 0 };
 void draw_initialise(void)
 {
     asset_load(&hex_tile, "res/img/hex_test5.png");
-    asset_load(&building_test, "res/img/building1_test.png");
+    asset_load(&building[1], "res/img/building1_test.png");
 
     asset_load(&(hex_edge[0]), "res/img/hex_edge_0000.png");
     asset_load(&(hex_edge[1]), "res/img/hex_edge_0001.png");
@@ -62,11 +62,24 @@ void draw_initialise(void)
 void draw_terminate(void)
 {
     asset_unload(&hex_tile);
-    asset_unload(&building_test);
+    asset_unload(&(building[1]));
 
     for (size_t i = 0; i < NUM_EDGE_ASSETS; i++) {
         asset_unload(&(hex_edge[i]));
     }
+}
+
+
+void draw_asset(InfexDrawAsset *asset, Vector2 pos, Color colour)
+{
+    DrawTexturePro(
+        asset->texture,
+        asset->bounds,
+        (Rectangle) { pos.x, pos.y, asset->bounds.width, asset->bounds.height },
+        asset->centre,
+        0,
+        colour
+    );
 }
 
 
@@ -106,38 +119,25 @@ void draw_map(void)
     uint8_t *slopes = map_slopes();
 
     for (size_t i = 0; i < grid_num_faces(); i++) {
-        DrawTexturePro(
-            hex_tile.texture,
-            hex_tile.bounds,
-            (Rectangle) {
-                faces[i].x,
-                faces[i].y,
-                hex_tile.texture.width,
-                hex_tile.texture.height
-            },
-            hex_tile.centre,
-            0,
-            colours[i]
-        );
+        draw_asset(&hex_tile, faces[i], colours[i]);
     }
 
     for (size_t i = 0; i < grid_num_vertices(); i++) {
-        DrawTexturePro(
-            hex_edge[slopes[i]].texture,
-            hex_edge[slopes[i]].bounds,
-            (Rectangle) {
-                vertices[i].x,
-                vertices[i].y,
-                hex_edge[slopes[i]].texture.width,
-                hex_edge[slopes[i]].texture.height
-            },
-            hex_edge[slopes[i]].centre,
-            0,
-            WHITE
-        );
+        draw_asset(&(hex_edge[slopes[i]]), vertices[i], WHITE);
     }
 
     if (is_debug()) draw_map_debug();
+}
+
+
+void draw_buildings(void)
+{
+    Vector2 *positions = building_positions();
+    uint8_t *textures = building_textures();
+
+    for (size_t i = 1; i <= player_num_buildings(); i++) {
+        draw_asset(&(building[textures[i]]), positions[i], WHITE);
+    }
 }
 
 
@@ -145,24 +145,16 @@ void draw_world(void)
 {
     draw_map();
     draw_enemy();
+    draw_buildings();
 }
 
 
 void draw_mouse(void)
 {
     if (is_building_shadow()) {
-        Vector2 pos = grid_face(mouse_face());
-        DrawTexturePro(
-            building_test.texture,
-            building_test.bounds,
-            (Rectangle) {
-                pos.x,
-                pos.y,
-                building_test.texture.width,
-                building_test.texture.height
-            },
-            building_test.centre,
-            0,
+        draw_asset(
+            &(building[building_shadow()]),
+            grid_face(mouse_face()),
             (Color) { 255, 255, 255, 120 }
         );
     }

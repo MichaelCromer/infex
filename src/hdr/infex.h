@@ -20,6 +20,7 @@ enum INFEX_SCREEN {
     INFEX_SCREEN_GAME,
 };
 
+
 #define NUM_GRID_DIRS 6
 enum GRID_DIR {
     DIR_EE,
@@ -30,6 +31,8 @@ enum GRID_DIR {
     DIR_SE
 };
 
+
+#define NUM_BUILDING_IDS 10
 enum BUILDING_ID {
     BUILDING_NONE = 0,
     BUILDING_TEST_1,
@@ -43,12 +46,13 @@ enum BUILDING_ID {
     BUILDING_STORAGE_ORGANIC
 };
 
-enum FOOTPRINT_ID {
+
+enum FOOTPRINT_TYPE {
     FOOTPRINT_NONE = 0,
     FOOTPRINT_ONE,
     FOOTPRINT_THREE,
     FOOTPRINT_SIX
-}
+};
 
 enum RESOURCE {
     RESOURCE_POWER = 0,

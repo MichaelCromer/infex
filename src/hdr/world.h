@@ -32,8 +32,6 @@ void world_generate(void);
 void world_update(float dt);
 
 Vector2 world_bounds(void);
-Vector2 world_bounds_upper(void);
-Vector2 world_bounds_lower(void);
 Vector2 world_centre(void);
 
 #endif

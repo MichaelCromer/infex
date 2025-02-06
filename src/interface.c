@@ -507,8 +507,11 @@ void mainmenu_render_aboutpanel(void)
     ) {
         CLAY_TEXT(
             CLAY_STRING("\
-                $ cat src/*.c src/hdr/*.h | sed -n /[a-zA-Z]/p | wc -l\n\
-                > 1104\
+$ cat src/*.c src/hdr/*.h | \
+sed /\\/\\*.*\\*\\//d | \
+sed /\\/\\*/,/\\*\\//d | \
+sed -n /[a-zA-Z]/p | wc -l\n\
+> 1031\
             "),
             CLAY_TEXT_CONFIG({
                 .fontId = FONT_ID_TITLE,
@@ -518,9 +521,9 @@ void mainmenu_render_aboutpanel(void)
         );
         CLAY_TEXT(
             CLAY_STRING("\
-                Code : C\n\
-                Graphics : raylib (github.com/raysan/raylib)\n\
-                Interface : clay (github.com/nicbarker/clay)\n\
+     Code : C\n\
+ Graphics : raylib  (github.com/raysan5/raylib)\n\
+Interface : clay    (github.com/nicbarker/clay)\n\
             "),
             CLAY_TEXT_CONFIG({
                 .fontId = FONT_ID_TITLE,

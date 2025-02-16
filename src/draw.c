@@ -153,8 +153,8 @@ void draw_mouse(void)
 {
     if (is_building_shadow()) {
         draw_asset(
-            &(building[building_shadow()]),
-            grid_face(mouse_face()),
+            &(building[building_shadow_id()]),
+            building_shadow_pos(),
             (Color) { 255, 255, 255, 120 }
         );
     }

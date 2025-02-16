@@ -30,7 +30,7 @@ float enemy_score(void);
 uint16_t player_num_buildings(void);
 /* PLAYER - BUILDING */
 enum FOOTPRINT_TYPE building_footprint_type(enum BUILDING_ID id);
-void building_create(const enum BUILDING_ID id, uint16_t grid_index);
+void building_create(const enum BUILDING_ID id, Vector2 pos);
 Vector2 *building_positions(void);
 uint8_t *building_textures(void);
 

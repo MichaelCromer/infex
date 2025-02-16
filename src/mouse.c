@@ -37,7 +37,7 @@ void mouse_update(float dt)
     mouse_track();
 
     if (IsMouseButtonPressed(0)) {
-        action_building_place(building_shadow());
+        action_building_place();
     } else if (IsMouseButtonPressed(1)) {
         action_building_shadow(BUILDING_NONE);
     }

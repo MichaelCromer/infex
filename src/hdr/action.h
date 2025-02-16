@@ -7,6 +7,6 @@ void action_quit(void);
 void action_mainmenu_background_initialise(void);
 void action_start_random_game(void);
 void action_building_shadow(enum BUILDING_ID b);
-void action_building_place(enum BUILDING_ID b);
+void action_building_place(void);
 
 #endif

@@ -30,20 +30,24 @@ void action_start_random_game(void)
 
 void action_building_shadow(enum BUILDING_ID b)
 {
-    set_building_shadow(b);
+    set_building_shadow(true);
+    set_building_shadow_id(b);
+    switch (building_footprint_type(b)) {
+        case FOOTPRINT_ONE:
+        case FOOTPRINT_SIX:
+            set_building_shadow_index_fn(mouse_face);
+            break;
+        case FOOTPRINT_THREE:
+            set_building_shadow_index_fn(mouse_face);
+            break;
+        default:
+            building_shadow_reset();
+            break;
+    }
 }
 
 
-void action_building_place(enum BUILDING_ID b)
+void action_building_place(void)
 {
-    switch (building_footprint_type(b)) {
-        case FOOTPRINT_ONE:
-            building_create(b, mouse_face());
-            break;
-        case FOOTPRINT_THREE:
-            building_create(b, mouse_vert());
-            break;
-        default:
-            break;
-    }
+    building_create(building_shadow_id(), building_shadow_pos());
 }

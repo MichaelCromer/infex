@@ -523,10 +523,10 @@ enum FOOTPRINT_TYPE building_footprint_type(enum BUILDING_ID id)
 }
 
 
-void building_create(const enum BUILDING_ID id, uint16_t grid_index)
+void building_create(const enum BUILDING_ID id, Vector2 pos)
 {
     b_texture_ids[b_next] = id;
-    b_positions[b_next] = faces[grid_index];
+    b_positions[b_next] = pos;
 
     b_next++;
 }

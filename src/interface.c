@@ -2,7 +2,6 @@
 #pragma GCC diagnostic ignored "-Wmissing-braces"
 #pragma GCC diagnostic ignored "-Wmissing-field-initializers"
 #pragma GCC diagnostic ignored "-Wpedantic"
-#pragma GCC diagnostic ignored "-Wunused-parameter"
 
 #include <stdlib.h>
 #include <stdio.h>
@@ -18,39 +17,76 @@
 #define FONT_ID_TITLE 0
 #define FONT_TARGET_TITLE "res/font/SyneMono-Regular.ttf"
 
-/***************************************************************************************
+/*--------------------------------------------------------------------------------------
+ *
  * CLAY INTERNALS
+ *
  */
+
 
 uint64_t memory = 0;
 Clay_Arena arena = { 0 };
 Clay_Dimensions dimensions = { 0 };
 
+Font interface_fonts[1] = { 0 };
+
 Clay_RenderCommandArray (*interface_renderer)(void) = NULL;
 Clay_RenderCommandArray render_commands = { 0 };
 
+
 void clay_stderr(Clay_ErrorData error_data)
 {
-    static Clay_ErrorType t = 0;
-    static uint64_t call = 0;
+    static Clay_ErrorType error_type = 0;
+    static int count = 0;
     fprintf(stderr, "CLAY: Error %d", error_data.errorType);
-    if ((error_data.errorType == t)) {
-        fprintf(stderr, " (x%lu) ", call);
+    if ((error_data.errorType == error_type)) {
+        fprintf(stderr, " (x%d) ", count);
     } else {
-        call = 0;
+        count = 0;
     }
     fprintf(stderr, "%s\n", error_data.errorText.chars);
-    call++;
-    t = error_data.errorType;
+    error_type = error_data.errorType;
+    count++;
 }
 
-/***************************************************************************************
- *  INTERFACE ELEMENTS
+
+/*--------------------------------------------------------------------------------------
+ *
+ *  GENERIC ELEMENTS
+ *
  */
 
+
+/*  APPEARANCE  ***********************************************************************/
+
+
+const Clay_Color colour_black = { 0, 0, 0, 255 };
+const Clay_Color colour_haze = { 200, 200, 200, 64 };
+
+const Clay_Color colour_panel_menu = { 100, 100, 100, 255 };
+const Clay_Color colour_panel_menu_accent = { 120, 120, 120, 255 };
+const Clay_Color colour_panel_primary = { 60, 60, 180, 255 };
+const Clay_Color colour_panel_primary_accent = { 24, 24, 96, 255 };
+
+const Clay_Color colour_text_header = { 0, 30, 60, 255 };
+const Clay_Color colour_text_subheader = { 0, 30, 60, 255 };
+const Clay_Color colour_text_body = { 0, 30, 60, 255 };
+const Clay_Color colour_text_label = { 0, 0, 0, 255 };
+
+const Clay_Color colour_button_primary_up = { 64, 64, 128, 255 };
+const Clay_Color colour_button_primary_hover = { 96, 96, 128, 255 };
+const Clay_Color colour_button_primary_down = { 128, 128, 128, 255 };
+
+const Clay_Color colour_button_menu_up = { 64, 64, 128, 255 };
+const Clay_Color colour_button_menu_hover = { 96, 96, 128, 255 };
+const Clay_Color colour_button_menu_down = { 128, 128, 128, 255 };
+
+/*  BUTTONS     ***********************************************************************/
+
+
 enum BUTTON_ID {
-    MENU_BUTTON_NONE,
-    MENU_BUTTON_TEST,
+    BUTTON_NONE = 0,
+    BUTTON_TEST,
     MAIN_BUTTON_PLAY,
     MAIN_BUTTON_SETTINGS,
     MAIN_BUTTON_ABOUT,
@@ -58,278 +94,323 @@ enum BUTTON_ID {
     PLAY_BUTTON_TUTORIAL,
     PLAY_BUTTON_CAMPAIGN,
     PLAY_BUTTON_RANDOM,
+    BOTTOMBAR_BUTTON_BUILD1,
+    BOTTOMBAR_BUTTON_BUILD2,
 };
+
 
 struct Button {
     enum BUTTON_ID id;
+    bool down;
     Clay_String label;
-    struct ButtonConfig *config;
     void (*on_hover)(Clay_ElementId id, Clay_PointerData mouse, intptr_t data);
     void (*on_click)(void);
 };
 
+
+/*
+ *  ButtonConfig
+ *
+ *  Holds enough Clay config structs to describe all the button states
+ *  Allows for convenient classes of button
+ */
 struct ButtonConfig {
     Clay_LayoutConfig layout;
-    Clay_RectangleElementConfig rectangle_up;
-    Clay_RectangleElementConfig rectangle_hover;
-    Clay_RectangleElementConfig rectangle_down;
-    Clay_RectangleElementConfig rectangle_disabled;
+    Clay_CornerRadius corner_radius;
+    Clay_Color colour_up;
+    Clay_Color colour_hover;
+    Clay_Color colour_down;
+    Clay_Color colour_disabled;
     Clay_TextElementConfig text;
 };
 
-struct ButtonConfig buttonconfig_mainmenu = {
-    .layout = {
-        .sizing = { .width = CLAY_SIZING_GROW(0), .height = CLAY_SIZING_FIXED(36)},
-        .childAlignment = { .x = CLAY_ALIGN_X_CENTER, .y = CLAY_ALIGN_Y_CENTER }
-    },
-    .rectangle_up = { .color = { 64, 64, 128, 255 }, .cornerRadius = 6 },
-    .rectangle_hover = { .color = { 96, 96, 128, 255 }, .cornerRadius = 6 },
-    .rectangle_down = { .color = { 128, 128, 128, 255 }, .cornerRadius = 6 },
-    .text = { .fontId = FONT_ID_TITLE, .fontSize = 24, .textColor = { 0, 0, 0, 255 } }
+
+struct ButtonArray {
+    enum BUTTON_ID selected;
+    size_t length;
+    struct Button *buttons;
+    struct ButtonConfig *buttonconfig;
+    Clay_LayoutConfig layout;
 };
 
-struct ButtonConfig buttonconfig_sidepanel = {
+/*
+ *  Menu Button Config
+ *      - Title screen main menu
+ *      - Title screen side panels
+*/
+struct ButtonConfig buttonconfig_menu = {
     .layout = {
         .sizing = { .width = CLAY_SIZING_GROW(0), .height = CLAY_SIZING_FIXED(36)},
         .childAlignment = { .x = CLAY_ALIGN_X_CENTER, .y = CLAY_ALIGN_Y_CENTER }
     },
-    .rectangle_up = { .color = { 64, 64, 128, 255 }, .cornerRadius = 6 },
-    .rectangle_hover = { .color = { 96, 96, 128, 255 }, .cornerRadius = 6 },
-    .rectangle_down = { .color = { 128, 128, 128, 255 }, .cornerRadius = 6 },
-    .text = { .fontId = FONT_ID_TITLE, .fontSize = 24, .textColor = { 0, 0, 0, 255 } }
+    .corner_radius = { 6 },
+    .colour_up = colour_button_menu_up,
+    .colour_hover = colour_button_menu_hover,
+    .colour_down = colour_button_menu_down,
+    .text = { .fontId = FONT_ID_TITLE, .fontSize = 24, .textColor = colour_text_label }
 };
+
+
+/*
+ *  Primary Button Config
+ *      - In-game buttons (top/bottom bar)
+ */
+struct ButtonConfig buttonconfig_primary = {
+    .layout = {
+        .sizing = { .width = CLAY_SIZING_FIXED(60), .height = CLAY_SIZING_PERCENT(0.9)},
+        .childAlignment = { .x = CLAY_ALIGN_X_CENTER, .y = CLAY_ALIGN_Y_CENTER }
+    },
+    .corner_radius = { 6 },
+    .colour_up = colour_button_primary_up,
+    .colour_hover = colour_button_primary_hover,
+    .colour_down = colour_button_primary_down,
+    .text = { .fontId = FONT_ID_TITLE, .fontSize = 18, .textColor = colour_text_label }
+};
+
+
+void button_render(struct Button *button, struct ButtonConfig *config)
+{
+    CLAY({
+        .layout = config->layout,
+        .cornerRadius = config->corner_radius,
+        .backgroundColor = (button->down)
+            ? config->colour_down
+            : ( Clay_Hovered() ? config->colour_hover : config->colour_up)
+    }) {
+        Clay_OnHover(button->on_hover, button->id),
+        CLAY_TEXT(
+            button->label,
+            CLAY_TEXT_CONFIG(config->text)
+        );
+    }
+}
+
+
+void buttonarray_render(struct ButtonArray *buttonarray)
+{
+    CLAY({
+        .layout = buttonarray->layout
+    }) {
+        for (size_t i = 0; i < buttonarray->length; i++) {
+            button_render(&(buttonarray->buttons[i]), buttonarray->buttonconfig);
+        }
+    }
+}
+
+
+void button_click(struct Button *button)
+{
+    button->down = !button->down;
+    if ((button->down) && (button->on_click)) button->on_click();
+}
+
+
+/*
+ *  ButtonArrays handle mutually exclusive options
+ *  Only one can be active at a time
+ */
+void buttonarray_click(struct ButtonArray *buttonarray, enum BUTTON_ID clicked)
+{
+    buttonarray->selected = BUTTON_NONE;
+    for (size_t i = 0; i < buttonarray->length; i++) {
+        if (buttonarray->buttons[i].down) {
+            buttonarray->buttons[i].down = false;
+            if (buttonarray->buttons[i].id == clicked) continue;
+        }
+        if (buttonarray->buttons[i].id != clicked) continue;
+        buttonarray->selected = buttonarray->buttons[i].id;
+        button_click(&(buttonarray->buttons[i]));
+    }
+}
+
+
+const struct Button button_test = {
+    .id = BUTTON_TEST,
+    .label = CLAY_STRING("Test"),
+};
+
+
+/*--------------------------------------------------------------------------------------
+ *
+ *  INTERFACES
+ *
+ */
+
 
 /*  MAIN MENU   ***********************************************************************/
 
-enum BUTTON_ID mainmenu_selected = MENU_BUTTON_NONE;
-void mainmenu_mouseover(Clay_ElementId id, Clay_PointerData mouse, intptr_t data);
+
+void mainmenu_hover(Clay_ElementId id, Clay_PointerData mouse, intptr_t data);
 
 #define NUM_MAINMENU_BUTTONS 4
 struct Button mainmenu_buttons[NUM_MAINMENU_BUTTONS] = {
     {
         .id = MAIN_BUTTON_PLAY,
         .label = CLAY_STRING("Play"),
-        .config = &buttonconfig_mainmenu,
-        .on_hover = mainmenu_mouseover,
-        .on_click = NULL
+        .on_hover = mainmenu_hover,
     },
     {
         .id = MAIN_BUTTON_SETTINGS,
         .label = CLAY_STRING("Settings"),
-        .config = &buttonconfig_mainmenu,
-        .on_hover = mainmenu_mouseover,
-        .on_click = NULL
+        .on_hover = mainmenu_hover,
     },
     {
         .id = MAIN_BUTTON_ABOUT,
         .label = CLAY_STRING("About"),
-        .config = &buttonconfig_mainmenu,
-        .on_hover = mainmenu_mouseover,
-        .on_click = NULL
+        .on_hover = mainmenu_hover,
     },
     {
         .id = MAIN_BUTTON_EXIT,
         .label = CLAY_STRING("Exit"),
-        .config = &buttonconfig_mainmenu,
-        .on_hover = mainmenu_mouseover,
-        .on_click = action_quit
+        .on_hover = mainmenu_hover,
     }
 };
 
-#define NUM_PLAYCAMPAIGN_BUTTONS 2
-struct Button playcampaign_buttons[NUM_PLAYCAMPAIGN_BUTTONS] = {
-    {
-        .id = PLAY_BUTTON_TUTORIAL,
-        .label = CLAY_STRING("Tutorial"),
-        .config = &buttonconfig_sidepanel,
-        .on_click = NULL,
-    },
-    {
+struct ButtonArray mainmenu_buttonarray = {
+    .selected = BUTTON_NONE,
+    .length = NUM_MAINMENU_BUTTONS,
+    .buttons = mainmenu_buttons,
+    .buttonconfig = &buttonconfig_menu,
+    .layout = {
+        .sizing = { .width = CLAY_SIZING_GROW(0), .height = CLAY_SIZING_GROW(0) },
+        .padding = { .top = 24, .bottom = 24, .left = 24, .right = 24 },
+        .childGap = (12),
+        .layoutDirection = CLAY_TOP_TO_BOTTOM
+    }
+};
+
+struct Button playbutton_tutorial = {
+    .id = PLAY_BUTTON_TUTORIAL,
+    .label = CLAY_STRING("Tutorial"),
+};
+
+struct Button playbutton_campaign = {
         .id = PLAY_BUTTON_CAMPAIGN,
         .label = CLAY_STRING("Campaign"),
-        .config = &buttonconfig_sidepanel,
-        .on_click = NULL,
-    }
 };
 
-struct Button playrandom_button = {
+struct Button playbutton_random = {
     .id = PLAY_BUTTON_RANDOM,
     .label = CLAY_STRING("Play Now"),
-    .config = &buttonconfig_sidepanel,
-    .on_hover = mainmenu_mouseover,
-    .on_click = action_start_random_game,
 };
 
 Clay_String current_profile = CLAY_STRING("<None>");
 
 void mainmenu_render_title(void)
 {
-    CLAY(
-        CLAY_ID("MainMenuTitle"),
-        CLAY_RECTANGLE({ .color = { 0 } }),
-        CLAY_LAYOUT({
-            .sizing = {
-                .width = CLAY_SIZING_GROW(0),
-                .height = CLAY_SIZING_FIXED(60)
-            },
-            .childAlignment = {
-                .x = CLAY_ALIGN_X_CENTER,
-                .y = CLAY_ALIGN_Y_CENTER
-            }
-        })
-    ) {
+    CLAY({
+        .id = CLAY_ID("MainMenuTitle"),
+        .layout = {
+            .sizing = { .width = CLAY_SIZING_GROW(0), .height = CLAY_SIZING_FIXED(60) },
+            .childAlignment = { .x = CLAY_ALIGN_X_CENTER, .y = CLAY_ALIGN_Y_CENTER }
+        },
+    }) {
         CLAY_TEXT(
             CLAY_STRING("infex"),
             CLAY_TEXT_CONFIG({
                 .fontId = FONT_ID_TITLE,
                 .fontSize = 36,
-                .textColor = { 0, 30, 60, 255 }
+                .textColor = colour_text_header
             })
         );
     }
 }
 
-void mainmenu_mouseover(Clay_ElementId clay_id, Clay_PointerData mouse, intptr_t data)
+void mainmenu_hover(Clay_ElementId clay_id, Clay_PointerData mouse, intptr_t data)
 {
     (void)clay_id;
     if (mouse.state != CLAY_POINTER_DATA_PRESSED_THIS_FRAME) return;
-
-    enum BUTTON_ID id = (enum BUTTON_ID) data;
-    if (id == mainmenu_selected) {
-        mainmenu_selected = MENU_BUTTON_NONE;
-        return;
-    }
-
-    for (size_t b = 0; b < NUM_MAINMENU_BUTTONS; b++) {
-        if (mainmenu_buttons[b].id != id) continue;
-        mainmenu_selected = mainmenu_buttons[b].id;
-        if (mainmenu_buttons[b].on_click) mainmenu_buttons[b].on_click();
-    }
-
-    if (id == PLAY_BUTTON_RANDOM) playrandom_button.on_click();
+    buttonarray_click(&mainmenu_buttonarray, (enum BUTTON_ID) data);
 }
 
-void mainmenu_render_button(struct Button *button)
-{
-    CLAY(
-        CLAY_LAYOUT(button->config->layout),
-        Clay_OnHover(button->on_hover, button->id),
-        Clay_Hovered()
-            ? CLAY_RECTANGLE(button->config->rectangle_hover)
-            : CLAY_RECTANGLE(button->config->rectangle_up)
-    )
-
-    {
-        CLAY_TEXT(
-            button->label,
-            CLAY_TEXT_CONFIG(button->config->text)
-        );
-    }
-}
 
 void mainmenu_render_divline(void)
 {
-    CLAY(
-        CLAY_LAYOUT({ .sizing = { .width = CLAY_SIZING_GROW(0), .height = 6 } }),
-        CLAY_RECTANGLE({ .color = { 120, 120, 120, 255 } })
-    ) {}
+    CLAY({
+        .layout = { .sizing = { .width = CLAY_SIZING_GROW(0), .height = 6 } },
+        .backgroundColor =  colour_panel_menu_accent
+    }) {}
 }
 
-void mainmenu_render_subheading(Clay_String title_text)
+
+void mainmenu_render_subheader(Clay_String title_text)
 {
-    CLAY(
-        CLAY_LAYOUT({
-            .sizing = { .width = CLAY_SIZING_GROW(0) }
-        })
-    ) {
+    CLAY({
+        .layout = { .sizing = { .width = CLAY_SIZING_GROW(0) } }
+    }) {
         CLAY_TEXT(
             title_text,
             CLAY_TEXT_CONFIG({
                 .fontId = FONT_ID_TITLE,
                 .fontSize = 30,
-                .textColor = { 0, 30, 60, 255 }
+                .textColor = colour_text_subheader
             })
         );
     }
 }
 
+
 void mainmenu_render_playpanel(void)
 {
     mainmenu_render_divline();
 
-    mainmenu_render_subheading(CLAY_STRING("Story Mode"));
+    mainmenu_render_subheader(CLAY_STRING("Story Mode"));
 
-    CLAY(
-        CLAY_ID("MainMenuPlayPanelCampaignBody"),
-        CLAY_LAYOUT({
+    CLAY({
+        .id = CLAY_ID("MainMenuPlayPanelCampaignBody"),
+        .layout = {
             .sizing = { .width = CLAY_SIZING_GROW(0) },
             .childGap = 12,
             .layoutDirection = CLAY_LEFT_TO_RIGHT,
-        })
-    ) {
-        CLAY(
-            CLAY_ID("MainMenuPlayPanelCampaignButtons"),
-            CLAY_LAYOUT({
-                .sizing = { .width = CLAY_SIZING_PERCENT(0.5) },
-                .padding = CLAY_PADDING_ALL(18),
-                .childGap = 12,
-                .layoutDirection = CLAY_TOP_TO_BOTTOM,
-            })
-        ) {
-            for (size_t b = 0; b < NUM_PLAYCAMPAIGN_BUTTONS; b++) {
-                mainmenu_render_button(&playcampaign_buttons[b]);
-            }
+        },
+    }) {
+        CLAY({
+            .id = CLAY_ID("MainMenuPlayPanelCampaignButtons"),
+            .layout = { .sizing = { .width = CLAY_SIZING_PERCENT(0.5) } }
+        }) {
+            button_render(&playbutton_tutorial, &buttonconfig_menu);
+            button_render(&playbutton_campaign, &buttonconfig_menu);
         }
 
-        CLAY(
-            CLAY_ID("MainMenuPlayPanelCampaignOptions"),
-            CLAY_LAYOUT({
+        CLAY({
+            .id = CLAY_ID("MainMenuPlayPanelCampaignOptions"),
+            .layout = {
                 .sizing = { .width = CLAY_SIZING_PERCENT(0.5) },
-                .layoutDirection = CLAY_TOP_TO_BOTTOM,
-            })
-        ) {
-            CLAY(
-                CLAY_ID("MainMenuPlayPanelCurrentProfile"),
-                CLAY_LAYOUT({
+                .layoutDirection = CLAY_TOP_TO_BOTTOM
+            },
+        }) {
+            CLAY({
+                .id = CLAY_ID("MainMenuPlayPanelCurrentProfile"),
+                .layout = {
                     .sizing = { .width = CLAY_SIZING_GROW(0) },
                     .padding = CLAY_PADDING_ALL(12),
                     .layoutDirection = CLAY_LEFT_TO_RIGHT,
                     .childGap = 12,
                     .childAlignment = { .y = CLAY_ALIGN_Y_CENTER },
-                })
-            ) {
+                },
+            }) {
                 CLAY_TEXT(
                     CLAY_STRING("Current Profile:"),
                     CLAY_TEXT_CONFIG({
                         .fontId = FONT_ID_TITLE,
                         .fontSize = 24,
-                        .textColor = { 0, 30, 60, 255 }
+                        .textColor = colour_text_body
                     })
                 );
 
-                CLAY (
-                    CLAY_LAYOUT({ 
+                CLAY({
+                    .layout = {
                         .sizing = { .width = CLAY_SIZING_GROW(0) },
                         .childAlignment = { .x = CLAY_ALIGN_X_CENTER },
                         .padding = CLAY_PADDING_ALL(6)
-                    }),
-                    CLAY_RECTANGLE({ .color = { 100, 100, 100, 200 } }),
-                    Clay_Hovered()
-                        ? CLAY_BORDER_OUTSIDE({
-                            .width = 3,
-                            .color = { 30, 90, 30, 255 }
-                        })
-                        : CLAY_BORDER_OUTSIDE({
-                            .width = 1,
-                            .color = { 90, 90, 90, 255 }
-                        })
-                ) {
+                    },
+                }) {
                     CLAY_TEXT(
                         current_profile,
                         CLAY_TEXT_CONFIG({
                             .fontId = FONT_ID_TITLE,
                             .fontSize = 24,
-                            .textColor = { 0, 30, 60, 255 }
+                            .textColor = colour_text_label
                         })
                     );
                 }
@@ -341,7 +422,7 @@ void mainmenu_render_playpanel(void)
 
     /* dropdowns/sliders/options */
 
-    /* 
+    /*
      *  map_size slider
      *  difficulty slider
      *  map_region dropdown
@@ -353,21 +434,20 @@ void mainmenu_render_playpanel(void)
      *      water toggle y/n
      *      ruggedness slider
      *      ???
-     *
      * */
 
-    mainmenu_render_subheading(CLAY_STRING("Random Map"));
+    mainmenu_render_subheader(CLAY_STRING("Random Map"));
 
-    CLAY(
-        CLAY_ID("MainMenuPlayPanelRandomMapButtons"),
-        CLAY_LAYOUT({
+    CLAY({
+        .id = CLAY_ID("MainMenuPlayPanelRandomMapButtons"),
+        .layout = {
             .sizing = { .width = CLAY_SIZING_GROW(0) },
             .layoutDirection = CLAY_LEFT_TO_RIGHT,
             .childGap = 12
-        })
-    ) {
-        CLAY( CLAY_LAYOUT({ .sizing = { .width = CLAY_SIZING_PERCENT(0.6) } }) ) {}
-        mainmenu_render_button(&playrandom_button);
+        }
+    }) {
+        CLAY({ .layout = { .sizing = { .width = CLAY_SIZING_PERCENT(0.6) } } }) {}
+        button_render(&playbutton_random, &buttonconfig_menu);
     }
 
     mainmenu_render_divline();
@@ -377,13 +457,13 @@ void mainmenu_render_aboutpanel(void)
 {
     mainmenu_render_divline();
 
-    mainmenu_render_subheading(CLAY_STRING("Credits"));
+    mainmenu_render_subheader(CLAY_STRING("Credits"));
 
-    CLAY(
-        CLAY_LAYOUT({
+    CLAY({
+        .layout = {
             .sizing = { .width = CLAY_SIZING_GROW(0), .height = CLAY_SIZING_GROW(0) }
-        })
-    ) {
+        }
+    }) {
         CLAY_TEXT(
             CLAY_STRING("\
                 code by quaduck \
@@ -391,43 +471,36 @@ void mainmenu_render_aboutpanel(void)
             CLAY_TEXT_CONFIG({
                 .fontId = FONT_ID_TITLE,
                 .fontSize = 18,
-                .textColor = { 0, 30, 60, 255 }
+                .textColor = colour_text_body
             })
         );
     }
 
     mainmenu_render_divline();
 
-    mainmenu_render_subheading(CLAY_STRING("Technical"));
+    mainmenu_render_subheader(CLAY_STRING("Technical"));
 
-    CLAY(
-        CLAY_LAYOUT({
+    CLAY({
+        .layout = {
             .sizing = { .width = CLAY_SIZING_GROW(0), .height = CLAY_SIZING_GROW(0) },
             .childGap = 12,
             .layoutDirection = CLAY_TOP_TO_BOTTOM,
-        })
-    ) {
+        }
+    }) {
         CLAY_TEXT(
-            CLAY_STRING("\
-                $ cat src/*.c src/hdr/*.h | sed -n /[a-zA-Z]/p | wc -l\n\
-                > 1104\
-            "),
+            CLAY_STRING("$ cat src/*.c src/hdr/*.h | sed /\\/\\*.*\\*\\//d | sed /\\/\\*/,/\\*\\//d | sed -n /[a-zA-Z]/p | wc -l\n> 1031"),
             CLAY_TEXT_CONFIG({
                 .fontId = FONT_ID_TITLE,
                 .fontSize = 18,
-                .textColor = { 0, 30, 60, 255 }
+                .textColor = colour_text_body
             })
         );
         CLAY_TEXT(
-            CLAY_STRING("\
-                Code : C\n\
-                Graphics : raylib (github.com/raysan/raylib)\n\
-                Interface : clay (github.com/nicbarker/clay)\n\
-            "),
+            CLAY_STRING("Code : C\nGraphics : raylib  (github.com/raysan5/raylib)\nInterface : clay    (github.com/nicbarker/clay)\n"),
             CLAY_TEXT_CONFIG({
                 .fontId = FONT_ID_TITLE,
                 .fontSize = 18,
-                .textColor = { 0, 30, 60, 255 }
+                .textColor = colour_text_body
             })
         );
     }
@@ -437,29 +510,25 @@ void mainmenu_render_aboutpanel(void)
 
 void mainmenu_render_sidepanel(void)
 {
-    CLAY(
-        CLAY_ID("MainMenuSidePanelContainer"),
-        CLAY_LAYOUT({
+    CLAY({
+        .id = CLAY_ID("MainMenuSidePanelContainer"),
+        .layout = {
             .sizing = { .width = CLAY_SIZING_GROW(0), .height = CLAY_SIZING_GROW(0) },
             .padding = CLAY_PADDING_ALL(24)
-        })
-    ) {
-        CLAY(
-            CLAY_ID("MainMenuSidePanel"),
-            CLAY_RECTANGLE({ .color = { 100, 100, 100, 200 }, .cornerRadius = 24 }),
-            CLAY_LAYOUT({
-                .sizing = {
-                    .width = CLAY_SIZING_GROW(0),
-                    .height = CLAY_SIZING_GROW(0)
-                },
+        }
+    }) {
+        CLAY({
+            .id = CLAY_ID("MainMenuSidePanel"),
+            .backgroundColor = colour_panel_menu,
+            .cornerRadius = 24,
+            .layout = {
+                .sizing = { .width = CLAY_SIZING_GROW(0), .height = CLAY_SIZING_GROW(0) },
                 .padding = CLAY_PADDING_ALL(24),
                 .layoutDirection = CLAY_TOP_TO_BOTTOM,
                 .childGap = 12
-            })
-        )
-
-        {
-            switch (mainmenu_selected) {
+            }
+        }) {
+            switch (mainmenu_buttonarray.selected) {
                 case MAIN_BUTTON_PLAY:
                     mainmenu_render_playpanel();
                     break;
@@ -477,21 +546,19 @@ Clay_RenderCommandArray interface_renderer_mainmenu()
 {
     Clay_BeginLayout();
 
-    CLAY(
-        CLAY_ID("OuterContainer"),
-        CLAY_RECTANGLE({ .color = { 200, 200, 200, 64 } }),
-        CLAY_LAYOUT({
+    CLAY({
+        .id = CLAY_ID("OuterContainer"),
+        .backgroundColor =  colour_haze,
+        .layout = {
             .sizing = { .width = CLAY_SIZING_GROW(0), .height = CLAY_SIZING_GROW(0) },
             .padding = { .left = 24 },
             .layoutDirection = CLAY_LEFT_TO_RIGHT
-        })
-    )
-
-    {
-        CLAY(
-            CLAY_ID("MainMenu"),
-            CLAY_RECTANGLE({ .color = { 100, 100, 100, 255 } }),
-            CLAY_LAYOUT({
+        }
+    }) {
+        CLAY({
+            .id = CLAY_ID("MainMenu"),
+            .backgroundColor = colour_panel_menu,
+            .layout = {
                 .sizing = {
                     .width = CLAY_SIZING_PERCENT(0.30),
                     .height = CLAY_SIZING_GROW(0),
@@ -499,30 +566,14 @@ Clay_RenderCommandArray interface_renderer_mainmenu()
                 .padding = { .left = 24, .right = 24, .bottom = 30 },
                 .childGap = 12,
                 .layoutDirection = CLAY_TOP_TO_BOTTOM
-            })
-        )
-
-        {
-            CLAY(CLAY_LAYOUT({ .sizing = { .height = CLAY_SIZING_GROW(0) } })) {}
-            mainmenu_render_title();
-            for (size_t b = 0; b < NUM_MAINMENU_BUTTONS; b++) {
-                if (mainmenu_buttons[b].id == mainmenu_selected) {
-                    CLAY(
-                        CLAY_LAYOUT(mainmenu_buttons[b].config->layout),
-                        CLAY_RECTANGLE(mainmenu_buttons[b].config->rectangle_down)
-                    ) {
-                        CLAY_TEXT(
-                            mainmenu_buttons[b].label,
-                            CLAY_TEXT_CONFIG(mainmenu_buttons[b].config->text)
-                        );
-                    }
-                } else {
-                    mainmenu_render_button(&mainmenu_buttons[b]);
-                }
             }
+        }) {
+            CLAY({ .layout = { .sizing = { .height = CLAY_SIZING_GROW(0) } } }) {}
+            mainmenu_render_title();
+            buttonarray_render(&mainmenu_buttonarray);
         }
 
-        if (mainmenu_selected != MENU_BUTTON_NONE) {
+        if (mainmenu_buttonarray.selected != BUTTON_NONE) {
             mainmenu_render_sidepanel();
         }
     }
@@ -530,9 +581,154 @@ Clay_RenderCommandArray interface_renderer_mainmenu()
     return Clay_EndLayout();
 }
 
-/***************************************************************************************
- * INTERFACE FUNCTIONS
+
+/*  IN-GAME     ***********************************************************************/
+
+
+
+/*  IN-GAME     //  TOP BAR     *******************************************************/
+
+
+void ingame_render_topbar(void)
+{
+    CLAY({
+        .id = CLAY_ID("InGameTopBar"),
+        .layout = {
+            .sizing = { .width = CLAY_SIZING_GROW(0), .height = CLAY_SIZING_FIXED(36) },
+            .padding = { .left = 24, .right = 24, .top = 3, .bottom = 6 },
+            .layoutDirection = CLAY_LEFT_TO_RIGHT,
+        },
+        .backgroundColor = colour_panel_primary
+    }) {
+        CLAY({
+            .layout = { .sizing = { .width = 120, .height = CLAY_SIZING_GROW(0) } },
+            .backgroundColor = colour_panel_primary_accent,
+            .cornerRadius = 3
+        }) { }
+    }
+}
+
+
+/*  IN-GAME     //  BOTTOM BAR  *******************************************************/
+
+
+void bottombar_hover(Clay_ElementId clay_id, Clay_PointerData mouse, intptr_t data);
+
+#define NUM_BOTTOMBAR_BUTTONS 2
+struct Button bottombar_buttons[NUM_BOTTOMBAR_BUTTONS] = {
+    {
+        .id = BOTTOMBAR_BUTTON_BUILD1,
+        .label = CLAY_STRING("Build 1"),
+        .on_hover = bottombar_hover,
+    },
+    {
+        .id = BOTTOMBAR_BUTTON_BUILD2,
+        .label = CLAY_STRING("Build 2"),
+        .on_hover = bottombar_hover,
+    }
+};
+
+
+struct ButtonArray bottombar_buttonarray = {
+    .selected = BUTTON_NONE,
+    .length = NUM_BOTTOMBAR_BUTTONS,
+    .buttons = bottombar_buttons,
+    .buttonconfig = &buttonconfig_primary,
+    .layout = (Clay_LayoutConfig) {
+        .sizing = { .width = CLAY_SIZING_GROW(0), .height = CLAY_SIZING_GROW(0) },
+        .childAlignment = { .y = CLAY_ALIGN_Y_CENTER },
+        .padding = { .top = 6, .bottom = 6, .left = 12, .right = 12 },
+        .childGap = (12),
+        .layoutDirection = CLAY_LEFT_TO_RIGHT
+    }
+};
+
+
+void bottombar_hover(Clay_ElementId clay_id, Clay_PointerData mouse, intptr_t data)
+{
+    (void)clay_id;
+    if (mouse.state != CLAY_POINTER_DATA_PRESSED_THIS_FRAME) return;
+    buttonarray_click(&bottombar_buttonarray, (enum BUTTON_ID) data);
+}
+
+
+void ingame_render_bottombar()
+{
+    CLAY({
+        .id = CLAY_ID("InGameBotBar"),
+        .layout = {
+            .sizing = { .width = CLAY_SIZING_GROW(0), .height = CLAY_SIZING_FIXED(45) },
+            .padding = { .left = 24, .right = 24, .top = 3, .bottom = 6 },
+            .layoutDirection = CLAY_LEFT_TO_RIGHT
+        },
+        .backgroundColor = colour_panel_primary
+    }) {
+        CLAY({
+            .layout = {
+                .sizing = {
+                    .width = CLAY_SIZING_FIT(0),
+                    .height = CLAY_SIZING_GROW(0)
+                },
+            },
+            .backgroundColor = colour_panel_primary_accent,
+            .cornerRadius = 3
+        }) {
+            buttonarray_render(&bottombar_buttonarray);
+        }
+    }
+}
+
+
+Clay_RenderCommandArray interface_renderer_ingame(void)
+{
+    Clay_BeginLayout();
+
+    CLAY({
+        .id = CLAY_ID("OuterContainer"),
+        .layout = {
+            .sizing = { .width = CLAY_SIZING_GROW(0), .height = CLAY_SIZING_GROW(0) },
+            .layoutDirection = CLAY_TOP_TO_BOTTOM
+        },
+    }) {
+        ingame_render_topbar();
+
+        CLAY({
+            .layout = {
+                .sizing = { .width = CLAY_SIZING_GROW(0), .height = CLAY_SIZING_GROW(0) }
+            }
+        }) {}
+
+        ingame_render_bottombar();
+    }
+
+    return Clay_EndLayout();
+}
+
+
+void interface_update_ingame(void)
+{
+    if (IsKeyPressed(KEY_ONE)) {
+        buttonarray_click(&bottombar_buttonarray, BOTTOMBAR_BUTTON_BUILD1);
+    } else if (IsKeyPressed(KEY_TWO)) {
+        buttonarray_click(&bottombar_buttonarray, BOTTOMBAR_BUTTON_BUILD2);
+    }
+
+    switch (bottombar_buttonarray.selected) {
+        case BOTTOMBAR_BUTTON_BUILD1:
+            action_building_shadow(BUILDING_TEST_1);
+            break;
+        default:
+            action_building_shadow(BUILDING_NONE);
+            break;
+    }
+}
+
+/*--------------------------------------------------------------------------------------
+ *
+ * INTERFACE MANAGERS
+ *
  */
+
 
 void interface_initialise(void)
 {
@@ -545,33 +741,49 @@ void interface_initialise(void)
     Clay_Initialize(
         arena,
         dimensions,
-        (Clay_ErrorHandler) { clay_stderr, 0 }
+        (Clay_ErrorHandler) { clay_stderr }
     );
 
     /* FONTS    */
-    Clay_SetMeasureTextFunction(Raylib_MeasureText, 0);
-    Raylib_fonts[FONT_ID_TITLE] = (Raylib_Font) {
-        .font = LoadFontEx(FONT_TARGET_TITLE, 48, 0, 400),
-        .fontId = FONT_ID_TITLE
-    };
-    SetTextureFilter(Raylib_fonts[FONT_ID_TITLE].font.texture, TEXTURE_FILTER_BILINEAR);
+    interface_fonts[FONT_ID_TITLE] = LoadFontEx(FONT_TARGET_TITLE, 48, 0, 400);
+    SetTextureFilter(interface_fonts[FONT_ID_TITLE].texture, TEXTURE_FILTER_BILINEAR);
+    Clay_SetMeasureTextFunction(Raylib_MeasureText, interface_fonts);
 }
+
 
 Clay_RenderCommandArray interface_renderer_fallback()
 {
     Clay_BeginLayout();
 
-    CLAY(
-        CLAY_ID("OuterContainer"),
-        CLAY_LAYOUT({
+    CLAY({
+        .id = CLAY_ID("OuterContainer"),
+        .layout = {
             .sizing = { .width = CLAY_SIZING_GROW(0), .height = CLAY_SIZING_GROW(0) },
-            .padding = { 24, 24 },
-            .childGap = 16
-        })
-    ) { }
+        }
+    }) { }
 
     return Clay_EndLayout();
 }
+
+
+void interface_render(void)
+{
+    switch (screen_curr()) {
+        case INFEX_SCREEN_MAINMENU:
+            interface_renderer = interface_renderer_mainmenu;
+            break;
+        case INFEX_SCREEN_GAME:
+            interface_renderer = interface_renderer_ingame;
+            break;
+        default:
+            interface_renderer = interface_renderer_fallback;
+            break;
+    }
+    render_commands = interface_renderer();
+    /* TODO threading ? */
+    Clay_Raylib_Render(render_commands, interface_fonts);
+}
+
 
 void interface_update(float dt)
 {
@@ -585,26 +797,20 @@ void interface_update(float dt)
     );
 
     switch (screen_curr()) {
-        case INFEX_SCREEN_MAINMENU:
-            interface_renderer = interface_renderer_mainmenu;
+        case INFEX_SCREEN_GAME:
+            interface_update_ingame();
             break;
         default:
-            interface_renderer = interface_renderer_fallback;
             break;
     }
-
-    render_commands = interface_renderer();
 }
 
-void interface_render(void)
-{
-    /* TODO threading */
-    Clay_Raylib_Render(render_commands);
-}
 
 void interface_reset(void)
 {
-    mainmenu_selected = MENU_BUTTON_NONE;
+    buttonarray_click(&mainmenu_buttonarray, BUTTON_NONE);
+    buttonarray_click(&bottombar_buttonarray, BUTTON_NONE);
 }
+
 
 #pragma GCC diagnostic pop

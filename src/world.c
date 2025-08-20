@@ -1,82 +1,63 @@
+/***************************************************************************************
+ *  INFEX WORLD GENERATION AND MAP MANAGEMENT
+ ***************************************************************************************
+ *
+ *  All the world's a page
+ *
+ */
+
 #include "hdr/infex.h"
 #include "hdr/state.h"
 
 
-/***************************************************************************************
- * DEFINES
+/*--------------------------------------------------------------------------------------
+ *
+ *  DEFINES
+ *
  */
 
+#define MAX_COL         (64)
+#define MAX_ROW         (64)
+#define MAX_HEIGHT      (8)
+#define MAX_TILES       ((MAX_COL) * (MAX_ROW))
+#define MAX_VERTS       (2 * (MAX_ROW - 1) * (MAX_COL - 1))
 
-#define MAX_C (64)
-#define MAX_R (64)
-#define MAX_H (8)
-#define MAX_TILES ((MAX_C) * (MAX_R))
-#define MAX_VERTS (2 * (MAX_R - 1) * (MAX_C - 1))
-#define GRID_SCALE (24)
-#define GRID_ASPECT_RATIO (1.0f)
-#define ROOT_3 (1.7320508f)
+#define MAX_BUILDINGS               (MAX_TILES / 6)
+#define MAX_BUILDING_NEIGHBOURS     (6)
 
-#define DELTA_C 48
-#define DELTA_R 24
-/*
-#define DELTA_C (GRID_SCALE * ROOT_3)
-#define DELTA_R (3.0f * GRID_ASPECT_RATIO * GRID_SCALE / 2.0f)
-*/
-
-#define MASK_SLOPE_EE  1
-#define MASK_SLOPE_NE  2
-#define MASK_SLOPE_NW  4
-#define MASK_SLOPE_WW  8
-#define MASK_SLOPE_SW 16
-#define MASK_SLOPE_SE 32
-
-#define ENEMY_UPDATE_INTERVAL (0.33f)   /* seconds between enemy updates    */
-#define ENEMY_GROW_MAX (0.05f)          /* maximum absolute increase        */
-#define ENEMY_GROW_FACTOR (0.01f)       /* fraction to increase by          */
-#define ENEMY_GROW_THRESHOLD (0.01f)    /* minimum value for growth         */
-#define ENEMY_SPLIT_THRESHOLD (0.66f)   /* minimum delta before split       */
-#define ENEMY_LEVEL_THRESHOLD (0.05f)   /* minimum delta before level flow  */
+#define ENEMY_UPDATE_INTERVAL   (0.33f) /* seconds between enemy updates    */
+#define ENEMY_GROW_MAX          (0.05f) /* maximum absolute increase        */
+#define ENEMY_GROW_FACTOR       (0.01f) /* fraction to increase by          */
+#define ENEMY_GROW_THRESHOLD    (0.01f) /* minimum value for growth         */
+#define ENEMY_SPLIT_THRESHOLD   (0.66f) /* minimum delta before split       */
+#define ENEMY_LEVEL_THRESHOLD   (0.05f) /* minimum delta before level flow  */
 
 
-/***************************************************************************************
- * DATA
+/*--------------------------------------------------------------------------------------
+ *
+ *  GEOMETRY
+ *
  */
-
 
 /* Geometry     */
 Vector2 faces[MAX_TILES] = { 0 };       /* locations on-screen of tile faces */
 Vector2 vertices[MAX_VERTS] = { 0 };    /* locations on-screen of tile vertices */
 Vector2 centre = { 0 };                 /* geometric centre of grid on-screen */
-Vector2 offset = { 0 };                 /* geometric offset of top left grid corner */
-Rectangle bounds = { 0 };               /* bounds of coordinates on-screen */
-Vector2 bounds_lower = { 0 };           /* top-left bounds of coordinates on-screen */
-Vector2 bounds_upper = { 0 };           /* bot-right bounds of coordinates on-screen */
-
-/* vector step separating neighbouring tile centres */
-Vector2 delta_face_ee = { DELTA_C, 0.0f };
-Vector2 delta_face_ne = { DELTA_C / 2.0f, -DELTA_R };
-Vector2 delta_face_nw = { -DELTA_C / 2.0f, -DELTA_R };
-Vector2 delta_face_ww = { -DELTA_C, 0.0f };
-Vector2 delta_face_sw = { -DELTA_C / 2.0f, DELTA_R };
-Vector2 delta_face_se = { DELTA_C / 2.0f, DELTA_R };
+Vector2 bounds = { 0 };                 /* lower right map corner */
 
 /* vector steps separating tile corners from tile centres */
-Vector2 delta_vert_se = { DELTA_C / 2.0f, DELTA_R / 3.0f };
-Vector2 delta_vert_ne = { DELTA_C / 2.0f, -DELTA_R / 3.0f };
-Vector2 delta_vert_nn = { 0.0f, -2.0f * DELTA_R / 3.0f };
-Vector2 delta_vert_nw = { -DELTA_C / 2.0f, -DELTA_R / 3.0f };
-Vector2 delta_vert_sw = { -DELTA_C / 2.0f, DELTA_R / 3.0f };
-Vector2 delta_vert_ss = { 0.0f, 2.0f * DELTA_R / 3.0f };
+Vector2 delta_vert_se = { DELTA_COL / 2.0f, DELTA_ROW / 3.0f };
+Vector2 delta_vert_ss = { 0.0f, 2.0f * DELTA_ROW / 3.0f + 2.0f };
 
-size_t num_faces = 0;
-size_t num_vertices = 0;
-size_t num_rows = 0;
-size_t num_cols = 0;
+uint16_t num_faces = 0;
+uint16_t num_vertices = 0;
+uint16_t num_rows = 0;
+uint16_t num_cols = 0;
 
 /* Map          */
 uint8_t heights[MAX_TILES] = { 0 };
-uint8_t slopes[MAX_TILES] = { 0 };      /* bitmask showing which edges are slopes */
 Color colours[MAX_TILES] = { 0 };       /* colours on-screen of tile faces */
+uint8_t slopes[MAX_VERTS] = { 0 };      /* bitmask showing edge types at verts */
 
 /* Enemy        */
 float enemy[MAX_TILES] = { 0 };
@@ -84,75 +65,72 @@ float e_tick = 0.0f;
 float e_score = 0.0f;
 
 /* Player       */
+Vector3 p_res_network = { 0 };  /* currently in-network         */
+Vector3 p_res_surplus = { 0 };  /* (generation - consumption)   */
+Vector3 p_res_current = { 0 };  /* currently in storage         */
+Vector3 p_res_storage = { 0 };  /* storage maximum              */
 
-/* Player - Resource */
-typedef enum {
-    RESOURCE_POWER = 0,
-    RESOURCE_MINERAL,
-    RESOURCE_ORGANIC,
-} RESOURCE;
+Vector3 b_res_internal[MAX_BUILDINGS] = { 0 };  /* available for use in buildings   */
+Vector3 b_res_external[MAX_BUILDINGS] = { 0 };  /* passing via buildings            */
+Vector3 b_res_upkeep[MAX_BUILDINGS] = { 0 };    /* required per tick                */
+Vector2 b_positions[MAX_BUILDINGS] = { 0 };     /* vector position on screen        */
+uint16_t b_footprints[MAX_TILES] = { 0 };       /* which grid tiles hit which bldgs */
+uint8_t b_texture_ids[MAX_BUILDINGS] = { 0 };                  /* which texture to use for each    */
+uint8_t b_hitpoints_current[MAX_BUILDINGS] = { 0 };            /* hp                               */
+uint8_t b_hitpoints_max[MAX_BUILDINGS] = { 0 };                /* max hp                           */
 
-typedef float Resource[3];
+/* buildings managed via swapback with NULLish first element */
+uint16_t b_next = 1;
 
-/* Player - Building */
-typedef enum {
-    BUILDING_NONE,
-    BUILDING_COMMAND_CENTRE,
-    BUILDING_GENERATOR_POWER,
-    BUILDING_GENERATOR_MINERAL,
-    BUILDING_GENERATOR_ORGANIC,
-    BUILDING_STORAGE_POWER,
-    BUILDING_STORAGE_MINERAL,
-    BUILDING_STORAGE_ORGANIC
-} BUILDING;
-
-typedef struct {
-    BUILDING type;
-    size_t position;
-} Building;
-
-Building *buildings[MAX_TILES];         /* for tracking all owned tiles */
-
-/***************************************************************************************
- * GRID
+/*--------------------------------------------------------------------------------------
+ *
+ *  GRID
+ *
  */
 
-void grid_initialise(size_t rows, size_t cols)
+
+uint16_t grid_face_index(uint16_t r, uint16_t c) { return num_cols*r + c; }
+uint16_t grid_vert_index(uint16_t r, uint16_t c) { return 2*(num_cols - 1)*r + c; }
+uint16_t grid_row(uint16_t i) { return i / num_cols; }
+uint16_t grid_col(uint16_t i) { return i % num_cols; }
+uint16_t grid_num_faces(void) { return num_faces; }
+uint16_t grid_num_vertices(void) { return num_vertices; }
+uint16_t grid_num_rows(void) { return num_rows; }
+uint16_t grid_num_cols(void) { return num_cols; }
+Vector2 *grid_faces(void) { return faces; }
+Vector2 grid_face(uint16_t i) { return faces[i]; }
+Vector2 *grid_vertices(void) { return vertices; }
+Vector2 grid_vert(uint16_t i) { return vertices[i]; }
+
+
+void grid_initialise(uint16_t rows, uint16_t cols)
 {
-    if ((cols > MAX_C) || (cols > MAX_R)) return;
+    if ((cols > MAX_COL) || (cols > MAX_ROW)) return;
 
     /* establish limits and other single constants */
 
     /* centre of world is translated to centre of screen in pixel land */
-    Vector2 midscreen = { GetScreenWidth() / 2.0f, GetScreenHeight() / 2.0f };
-    bounds.width = (cols - 0.5f) * DELTA_C;
-    bounds.height = (rows - 1) * DELTA_R;
-    Vector2 midgrid = { bounds.width / 2.0f, bounds.height / 2.0f };
-    offset = Vector2Subtract(midscreen, midgrid);
-    bounds.x = offset.x;
-    bounds.y = offset.y;
-
-    bounds_lower = (Vector2) { bounds.x, bounds.y };
-    bounds_upper = (Vector2) { bounds.x + bounds.width, bounds.y + bounds.height };
+    bounds = (Vector2) { (cols - 0.5f) * DELTA_COL, (rows - 1) * DELTA_ROW };
+    centre = Vector2Scale(bounds, 0.5f);
 
     num_rows = rows;
     num_cols = cols;
     num_faces = rows * cols;
     num_vertices = 2 * (rows - 1) * (cols - 1);
 
-    float u = 0, v = offset.y;     /* for current tile face positions */
-    size_t i = 0, j = 0;    /* for calculating face and vertex index positions */
+    float u = 0, v = 0;     /* for current tile face positions */
+    uint16_t i = 0, j = 0;    /* for calculating face and vertex index positions */
     bool odd_row = false;
 
     /* calculate the geometric tile data */
-    for (size_t r = 0; r < num_rows; r++) {
+    for (uint16_t r = 0; r < num_rows; r++) {
         odd_row = (r % 2);
-        u = offset.x + ((odd_row) ? (DELTA_C / 2) : 0.0f);
+        u = ((odd_row) ? (DELTA_COL / 2) : 0.0f);
 
-        for (size_t c = 0; c < num_cols; c++) {
+        for (uint16_t c = 0; c < num_cols; c++) {
             /* faces are easy; they're 1:1 with (r,c) pairs */
             faces[i++] = (Vector2) { u, v };
-            u += DELTA_C;
+            u += DELTA_COL;
 
             /* vertices are harder, they are either 0:1, 1:1, or 2:1 with (r,c)s */
             /* canonically take tile i as owning verts ss and se of it */
@@ -167,29 +145,11 @@ void grid_initialise(size_t rows, size_t cols)
                 if (!odd_row)  vertices[j++] = Vector2Add(faces[i-1], delta_vert_ss);
             }
         }
-        v += DELTA_R;
+        v += DELTA_ROW;
     }
-
-    /* calculate the tile vertex data */
 }
 
-size_t grid_index(size_t r, size_t c) { return (num_cols*r) + c; }
-size_t grid_row(size_t i) { return i / num_cols; }
-size_t grid_col(size_t i) { return i % num_cols; }
-size_t grid_num_faces(void) { return num_faces; }
-size_t grid_num_vertices(void) { return num_vertices; }
-size_t grid_num_rows(void) { return num_rows; }
-size_t grid_num_cols(void) { return num_cols; }
-Vector2 *grid_faces(void) { return faces; }
-Vector2 grid_face(size_t i) { return faces[i]; }
-Vector2 *grid_vertices(void) { return vertices; }
-Vector2 grid_vertex(size_t i) { return vertices[i]; }
-Vector2 grid_offset(void) { return offset; }
-float grid_scale(void) { return (float)GRID_SCALE; }
-float grid_delta_row(void) { return (float)DELTA_R; }
-float grid_delta_col(void) { return (float)DELTA_C; }
-
-size_t grid_num_neighbours(size_t r, size_t c)
+uint16_t grid_num_neighbours(uint16_t r, uint16_t c)
 {
     bool odd_row = (r % 2);
 
@@ -204,106 +164,30 @@ size_t grid_num_neighbours(size_t r, size_t c)
     return 6;
 }
 
-Vector2 grid_vertex_clockwise_from(size_t i, enum GRID_DIR d)
-{
-    Vector2 vertex = faces[i];
-    switch (d) {
-        case DIR_EE:
-            return Vector2Add(vertex, delta_vert_se);
-        case DIR_NE:
-            return Vector2Add(vertex, delta_vert_ne);
-        case DIR_NW:
-            return Vector2Add(vertex, delta_vert_nn);
-        case DIR_WW:
-            return Vector2Add(vertex, delta_vert_nw);
-        case DIR_SW:
-            return Vector2Add(vertex, delta_vert_sw);
-        case DIR_SE:
-            return Vector2Add(vertex, delta_vert_ss);
-        default:
-            break;
-    }
-
-    return vertex;
-}
-
-Vector2 grid_vertex_anticlockwise_from(size_t i, enum GRID_DIR d)
-{
-    Vector2 vertex = faces[i];
-    switch (d) {
-        case DIR_EE:
-            return Vector2Add(vertex, delta_vert_ne);
-        case DIR_NE:
-            return Vector2Add(vertex, delta_vert_nn);
-        case DIR_NW:
-            return Vector2Add(vertex, delta_vert_nw);
-        case DIR_WW:
-            return Vector2Add(vertex, delta_vert_sw);
-        case DIR_SW:
-            return Vector2Add(vertex, delta_vert_ss);
-        case DIR_SE:
-            return Vector2Add(vertex, delta_vert_se);
-        default:
-            break;
-    }
-
-    return vertex;
-}
-
-/***************************************************************************************
- * MAP
+/*--------------------------------------------------------------------------------------
+ *
+ *  MAP
+ *
  */
 
-bool map_slope(size_t i, enum GRID_DIR d)
-{
-    uint8_t mask = 0;
-    switch (d) {
-        case DIR_EE:
-            mask = MASK_SLOPE_EE;
-            break;
-        case DIR_NE:
-            mask = MASK_SLOPE_NE;
-            break;
-        case DIR_NW:
-            mask = MASK_SLOPE_NW;
-            break;
-        case DIR_WW:
-            mask = MASK_SLOPE_WW;
-            break;
-        case DIR_SW:
-            mask = MASK_SLOPE_SW;
-            break;
-        case DIR_SE:
-            mask = MASK_SLOPE_SE;
-            break;
-        default:
-            break;
-    }
-    return (slopes[i] & mask);
-}
+uint8_t *map_slopes(void) { return slopes; }
+Color *map_colours(void) { return colours; }
 
-Color *map_colours(void)
-{
-    return colours;
-}
 
-void map_gen_seismic(uint8_t dh, size_t n)
+void map_gen_seismic(uint8_t dh, uint16_t n)
 {
     /* base case return */
     if (n <= 0 || dh <= 0) return;
 
     /* n random seismic events at magnigute dh */
-    int angle = 0, r = 0, c = 0;
+    int angle = 0;
     Vector2 v = Vector2Zero(), w = Vector2Zero();
-    for (size_t i = 0; i < n; i++) {
+    for (uint16_t i = 0; i < n; i++) {
         angle = GetRandomValue(0, 359);
-        r = GetRandomValue(0, num_rows - 1);
-        c = GetRandomValue(0, num_cols - 1);
-        v = (Vector2) {
-        cosf(angle), sinf(angle)};
-        w = faces[grid_index(r, c)];
+        v = (Vector2) { cosf(angle), sinf(angle)};
+        w = faces[GetRandomValue(0, num_faces - 1)];
 
-        for (size_t j = 0; j < grid_num_faces(); j++) {
+        for (uint16_t j = 0; j < num_faces; j++) {
             if (Vector2DotProduct(v, Vector2Subtract(faces[j], w)) >= 0) {
                 heights[j] += dh;
             }
@@ -312,18 +196,19 @@ void map_gen_seismic(uint8_t dh, size_t n)
     map_gen_seismic(dh / 2, n * 2);
 }
 
-void map_gen_erosion(size_t rounds)
+
+void map_gen_erosion(uint16_t rounds)
 {
     if (!rounds) return;
 
     float buf[MAX_TILES] = { 0 };
     bool odd_row = false;
-    size_t i = 0;
+    uint16_t i = 0;
 
-    for (size_t r = 0; r < num_rows; r++) {
+    for (uint16_t r = 0; r < num_rows; r++) {
         odd_row = (r % 2);
 
-        for (size_t c = 0; c < num_cols; c++) {
+        for (uint16_t c = 0; c < num_cols; c++) {
             buf[i] += heights[i];
 
             if (c < (num_cols - 1)) {
@@ -351,8 +236,8 @@ void map_gen_erosion(size_t rounds)
     }
 
     i = 0;
-    for (size_t r = 0; r < num_rows; r++) {
-        for (size_t c = 0; c < num_cols; c++) {
+    for (uint16_t r = 0; r < num_rows; r++) {
+        for (uint16_t c = 0; c < num_cols; c++) {
             heights[i] = buf[i] / (1.0f + grid_num_neighbours(r, c));
             i++;
         }
@@ -361,11 +246,12 @@ void map_gen_erosion(size_t rounds)
     map_gen_erosion(rounds - 1);
 }
 
+
 void map_gen_renormalise(void)
 {
     float max = 0.0f;
     float min = heights[0];
-    for (size_t i = 0; i < grid_num_faces(); i++) {
+    for (uint16_t i = 0; i < num_faces; i++) {
         if (heights[i] > max) {
             max = (float)heights[i];
         }
@@ -374,80 +260,136 @@ void map_gen_renormalise(void)
         }
     }
 
-    float factor = ((max - min) == 0) ? 0.0f : (MAX_H/(max - min));
-    for (size_t i = 0; i < grid_num_faces(); i++) {
+    float factor = ((max - min) == 0) ? 0.0f : (MAX_HEIGHT/(max - min));
+    for (uint16_t i = 0; i < num_faces; i++) {
         heights[i] = floor((heights[i] - min)*factor);
+    }
+
+    uint16_t h = 0, i = 0, j = 0, k = 0;
+    uint16_t m = 0;
+    bool done = false;
+    while (!done) {
+        done = true;
+        for (uint16_t r = 0; r < num_rows; r++) {
+            i = r * num_cols;
+            h = i - num_cols + ((r % 2) ? 1 : 0);
+            j = i + 1;
+            k = i + num_cols + ((r % 2) ? 1 : 0);
+            for (uint16_t c = 0; c < num_cols - 1; c++) {
+                if ((heights[i] != heights[j])
+                    && (heights[j] != heights[k])
+                    && (heights[k] != heights[i])
+                    && (r < num_rows - 1)
+                ) {
+                    m = (heights[i] > heights[j]) ? j : i;
+                    m = (heights[k] > heights[m]) ? m : k;
+                    heights[m]++;
+                    done = false;
+                }
+                if ((heights[i] != heights[j])
+                    && (heights[j] != heights[h])
+                    && (heights[h] != heights[i])
+                    && (r > 0)
+                ) {
+                    m = (heights[i] > heights[j]) ? j : i;
+                    m = (heights[h] > heights[m]) ? m : h;
+                    heights[m]++;
+                    done = false;
+                }
+                h++;
+                i++;
+                j++;
+                k++;
+            }
+        }
     }
 }
 
-void map_gen_colourset(void)
+
+void map_gen_colours(void)
 {
     Color c0 = { 49, 163, 84, 255 };
     Color c1 = { 114, 84, 40, 255 };
 
-    for (size_t i = 0; i < grid_num_faces(); i++) {
+    for (uint16_t i = 0; i < num_faces; i++) {
         if (heights[i] == 0) {
             colours[i] = BLUE;
             continue;
         }
-        colours[i] = ColorLerp(c0, c1, heights[i] / (1.0f * MAX_H));
+        colours[i] = ColorLerp(c0, c1, heights[i] / (1.0f * MAX_HEIGHT));
     }
 }
 
+
 void map_gen_slopes(void)
 {
-    size_t i = 0;
-    int8_t dh = 0;
-    size_t up = 0;
-    bool odd_row = false;
-
-    (void)odd_row;
-    for (size_t r = 0; r < num_rows; r++) {
-        odd_row = (r % 2);
-        for (size_t c = 0; c < num_cols; c++) {
-
-            if (c != (num_cols - 1)) {
-                dh = heights[i + 1] - heights[i];
-                if (dh != 0) {
-                    up = (dh > 0) ? (i + 1) : i;
-                    slopes[up] |= (up == i) ? MASK_SLOPE_EE : MASK_SLOPE_WW;
+    uint16_t u = 0, v = 0, h = 0, i = 0, j = 0, k = 0;
+    for (uint16_t r = 0; r < num_rows; r++) {
+        i = r * num_cols;
+        h = i - num_cols + ((r % 2) ? 1 : 0);
+        j = i + 1;
+        k = h + 2*num_cols;
+        u = 2 * r * (num_cols - 1) + ((r % 2) ? 1 : 0);
+        v = u - 2*(num_cols - 1);
+        for (uint16_t c = 0; c < num_cols - 1; c++) {
+            if (r > 0) {
+                slopes[v] = 0;
+                if (heights[j] == heights[h]) {
+                    if (heights[i] < heights[j]) {
+                        slopes[v] = 7;
+                    } else if (heights[i] > heights[j]) {
+                        slopes[v] = 10;
+                    }
+                } else if (heights[i] == heights[j]) {
+                    if (heights[h] < heights[i]) {
+                        slopes[v] = 8;
+                    } else if (heights[h] > heights[i]) {
+                        slopes[v] = 11;
+                    }
+                } else {
+                    if (heights[j] < heights[h]) {
+                        slopes[v] = 9;
+                    } else if (heights[j] > heights[h]) {
+                        slopes[v] = 12;
+                    }
                 }
+                v += 2;
             }
 
-            if (r != (num_rows - 1)) {
-                dh = heights[i + num_cols] - heights[i];
-                if (dh != 0) {
-                    up = (dh > 0) ? (i + num_cols) : i;
-                    slopes[up] |= (up == i)
-                        ? ( (odd_row) ? MASK_SLOPE_SW : MASK_SLOPE_SE )
-                        : ( (odd_row) ? MASK_SLOPE_NE : MASK_SLOPE_NW );
+            if (r < (num_rows - 1)) {
+                slopes[u] = 0;
+                if (heights[j] == heights[k]) {
+                    if (heights[i] < heights[j]) {
+                        slopes[u] = 1;
+                    } else if (heights[i] > heights[j]) {
+                        slopes[u] = 4;
+                    }
+                } else if (heights[i] == heights[j]) {
+                    if (heights[k] < heights[i]) {
+                        slopes[u] = 2;
+                    } else if (heights[k] > heights[i]) {
+                        slopes[u] = 5;
+                    }
+                } else {
+                    if (heights[j] < heights[k]) {
+                        slopes[u] = 3;
+                    } else if (heights[j] > heights[k]) {
+                        slopes[u] = 6;
+                    }
                 }
+                u += 2;
             }
 
-            if (odd_row && (c != (num_cols - 1)) && (r != (num_rows - 1))) {
-                dh = heights[i + num_cols + 1] - heights[i];
-                if (dh != 0) {
-                    up = (dh > 0) ? (i + num_cols + 1) : i;
-                    slopes[up] |= (up == i) ? MASK_SLOPE_SE : MASK_SLOPE_NW;
-                }
-            }
-
-            if (!odd_row && (c != 0) && (r != (num_rows - 1))) {
-                dh = heights[i + num_cols - 1] - heights[i];
-                if (dh != 0) {
-                    up = (dh > 0) ? (i + num_cols - 1) : i;
-                    slopes[up] |= (up == i) ? MASK_SLOPE_SW : MASK_SLOPE_NE;
-                }
-            }
-
-            i++;
+            h++, i++, j++, k++;
         }
     }
 }
 
 
-/***************************************************************************************
- * ENEMY
+/*--------------------------------------------------------------------------------------
+ *
+ *  ENEMY
+ *
  */
 
 
@@ -461,30 +403,30 @@ float enemy_score(void)
     return e_score;
 }
 
-void enemy_set(size_t i, float val)
+void enemy_set(uint16_t i, float val)
 {
     enemy[i] = val;
 }
 
-float enemy_height(size_t i)
+float enemy_height(uint16_t i)
 {
     return (enemy[i] + heights[i]);
 }
 
-float enemy_delta(size_t i, size_t j)
+float enemy_delta(uint16_t i, uint16_t j)
 {
     return (enemy_height(i) - enemy_height(j));
 }
 
 void enemy_initialise()
 {
-    for (size_t i = 0; i < grid_num_faces(); i++) {
+    for (uint16_t i = 0; i < num_faces; i++) {
         enemy[i] = 0.0f;
     }
     enemy_set(GetRandomValue(0, num_faces - 1), 1.0f); /* TODO this is just for testing */
 }
 
-void enemy_grow(size_t i)
+void enemy_grow(uint16_t i)
 {
     if (enemy[i] < ENEMY_GROW_THRESHOLD) {
         enemy[i] /= 2;
@@ -498,7 +440,7 @@ void enemy_grow(size_t i)
 /* enemy balances out existing tiles
  * enemy splits to vacant tiles
  * */
-void enemy_flow(size_t i, size_t j)
+void enemy_flow(uint16_t i, uint16_t j)
 {
     /* early exit if nothing to do */
     if (FloatEquals(enemy[i], 0.0f) && FloatEquals(enemy[j], 0.0f)) return;
@@ -513,8 +455,8 @@ void enemy_flow(size_t i, size_t j)
     if (dh < threshold) return;
 
     /* figure out the direction of flow */
-    size_t src = (dh > 0) ? i : j;
-    size_t snk = (src == j) ? i : j;
+    uint16_t src = (dh > 0) ? i : j;
+    uint16_t snk = (src == j) ? i : j;
 
     /* do the flow, accounting for case of not having enough to supply all of dh */
     dh = (dh < enemy[src]) ? dh : enemy[src];
@@ -525,9 +467,9 @@ void enemy_flow(size_t i, size_t j)
 void enemy_update(void)
 {
     e_score = 0.0f;
-    size_t i = 0;
-    for (size_t r = 0; r < num_rows; r++) {
-        for (size_t c = 0; c < num_cols; c++) {
+    uint16_t i = 0;
+    for (uint16_t r = 0; r < num_rows; r++) {
+        for (uint16_t c = 0; c < num_cols; c++) {
             enemy_grow(i);
             e_score += enemy[i];
 
@@ -553,12 +495,53 @@ void enemy_update(void)
 }
 
 
-/***************************************************************************************
- * WORLD
+/*--------------------------------------------------------------------------------------
+ *
+ *  PLAYER
+ *
  */
 
+uint16_t player_num_buildings(void) { return b_next - 1; }
 
-void world_initialise(size_t rows, size_t cols)
+
+/*--/   BUILDING    /-----------------------------------------------------------------*/
+
+uint8_t *building_textures(void) { return b_texture_ids; }
+Vector2 *building_positions(void) { return b_positions; }
+
+
+enum FOOTPRINT_TYPE building_footprint_type(enum BUILDING_ID id)
+{
+    switch (id) {
+        case BUILDING_TEST_1:
+            return FOOTPRINT_ONE;
+        case BUILDING_TEST_3:
+            return FOOTPRINT_THREE;
+        default:
+            return FOOTPRINT_NONE;
+    }
+}
+
+
+void building_create(const enum BUILDING_ID id, Vector2 pos)
+{
+    b_texture_ids[b_next] = id;
+    b_positions[b_next] = pos;
+
+    b_next++;
+}
+
+
+/*--------------------------------------------------------------------------------------
+ *
+ * WORLD
+ *
+ */
+
+Vector2 world_centre(void) { return centre; }
+Vector2 world_bounds(void) { return bounds; }
+
+void world_initialise(uint16_t rows, uint16_t cols)
 {
     grid_initialise(rows, cols);
 }
@@ -567,40 +550,21 @@ void world_initialise(size_t rows, size_t cols)
 void world_clear(void)
 {
     e_score = 0;
-    for (size_t i = 0; i < grid_num_faces(); i++) {
+    b_next = 1;
+    for (uint16_t i = 0; i < num_faces; i++) {
         heights[i] = 0;
         slopes[i] = 0;
         enemy[i] = 0;
     }
 }
 
-Vector2 world_centre(void)
-{
-    return centre;
-}
-
-Rectangle world_bounds(void)
-{
-    return bounds;
-}
-
-Vector2 world_bounds_lower(void)
-{
-    return bounds_lower;
-}
-
-Vector2 world_bounds_upper(void)
-{
-    return bounds_upper;
-}
-
 void world_generate(void)
 {
     world_clear();
     map_gen_seismic(8, 8);
-    map_gen_erosion(3);
+    map_gen_erosion(2);
     map_gen_renormalise();
-    map_gen_colourset();
+    map_gen_colours();
     map_gen_slopes();
     enemy_initialise();
 }

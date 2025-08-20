@@ -2,33 +2,43 @@ CC = gcc
 CFLAGS = -Wall -Wextra -Wpedantic
 CLIBS = -lraylib -lm
 
-SRCDIR = src
-BLDDIR = build
-LIBDIR = src/lib
-TARGET = infex
+DIR_SRC = src
+DIR_HDR = $(DIR_SRC)/hdr
+DIR_LIB = $(DIR_SRC)/lib
+DIR_BLD = bld
+DIR_OBJ = $(DIR_BLD)/obj
+TARGET = $(DIR_BLD)/infex
 
-SRC = $(wildcard $(SRCDIR)/*.c)
-HDR = $(wildcard $(SRCDIR)/hdr/*.h)
-OBJ = $(SRC:%.c=$(BLDDIR)/%.o)
+SRC = $(wildcard $(DIR_SRC)/*.c)
+HDR = $(wildcard $(DIR_SRC)/hdr/*.h)
+OBJ = $(SRC:$(DIR_SRC)/%.c=$(DIR_OBJ)/%.o)
 
-$(BLDDIR)/$(TARGET): $(OBJ)
-	$(CC) $(OBJ) -o $@ $(CLIBS)
 
-$(BLDDIR)/%.o: %.c
-	mkdir -p $(dir $@)
+$(TARGET): $(OBJ) | $(DIR_BLD)
+	$(CC) $(CFLAGS) $(OBJ) -o $@ $(CLIBS)
+
+
+$(DIR_OBJ)/%.o: $(DIR_SRC)/%.c | $(DIR_OBJ)
 	$(CC) $(CFLAGS) -c $< -o $@
 
-dev: CFLAGS += -g
-dev: $(BLDDIR)/$(TARGET)
+
+$(DIR_BLD) $(DIR_OBJ): ; mkdir -p $@
+
+
+.PHONY: dev
+dev : CFLAGS += -g -fsanitize=address,leak,undefined
+dev : clean $(TARGET)
+
 
 prod: CFLAGS += -O3
-prod: $(BLDDIR)/$(TARGET)
+prod: clean $(TARGET)
 
-clean:
-	rm -rf $(BLDDIR)
+
 .PHONY: clean
+clean:
+	rm -rf $(DIR_BLD)
 
-tags:
-	rm -rf tags
-	ctags $(SRC) $(HDR) $(LIBDIR)/clay/clay.h $(LIBDIR)/clay/renderers/raylib/*.c
+
 .PHONY: tags
+tags:
+	ctags $(SRC) $(HDR) $(DIR_LIB)/clay/clay.h $(DIR_LIB)/clay/renderers/raylib/*.c

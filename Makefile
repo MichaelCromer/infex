@@ -1,5 +1,5 @@
 CC = gcc
-CFLAGS = -Wall -Wextra -Wpedantic
+CFLAGS = -Wall -Wextra -Wpedantic -O3
 CLIBS = -lraylib -lm
 
 DIR_SRC = src
@@ -26,7 +26,7 @@ $(DIR_BLD) $(DIR_OBJ): ; mkdir -p $@
 
 
 .PHONY: dev
-dev : CFLAGS += -g -fsanitize=address,leak,undefined
+dev : CFLAGS = -g -fsanitize=address,leak,undefined -Wall -Wextra -Wpedantic
 dev : clean $(TARGET)
 
 

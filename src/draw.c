@@ -6,6 +6,16 @@
 #include "hdr/world.h"
 
 
+static struct
+{
+    int width;
+    int height;
+} draw = {
+    .width = 0,
+    .height = 0
+};
+
+
 typedef struct InfexDrawAsset {
     Texture2D texture;
     Rectangle bounds;
@@ -38,10 +48,13 @@ InfexDrawAsset building[NUM_BUILDING_IDS] = { 0 };
 #define NUM_EDGE_ASSETS 13
 InfexDrawAsset hex_edge[NUM_EDGE_ASSETS] = { 0 };
 
-void draw_initialise(void)
+void draw_initialise(int width, int height)
 {
+    draw.width = width, draw.height = height;
+    interface_initialise(width, height);
+
     asset_load(&hex_tile, "res/img/hex_test5.png");
-    asset_load(&building[1], "res/img/building1_test.png");
+    asset_load(&building[BUILDING_TEST_1], "res/img/building1_test.png");
 
     asset_load(&(hex_edge[0]), "res/img/hex_edge_0000.png");
     asset_load(&(hex_edge[1]), "res/img/hex_edge_0001.png");
@@ -126,7 +139,7 @@ void draw_map(void)
         draw_asset(&(hex_edge[slopes[i]]), vertices[i], WHITE);
     }
 
-    if (is_debug()) draw_map_debug();
+    if (state_is_debug()) draw_map_debug();
 }
 
 
@@ -161,57 +174,25 @@ void draw_mouse(void)
 }
 
 
-void draw_interface(void)
+void draw_screen(void)
 {
-    interface_render();
-}
-
-
-void draw_screen_title(void)
-{
-    BeginMode2D(*camera_state());
-    draw_world();
-    draw_interface();
-    EndMode2D();
-}
-
-
-void draw_screen_game(void)
-{
-    BeginMode2D(*camera_state());
+    BeginMode2D(camera_state());
     draw_world();
     draw_mouse();
     EndMode2D();
 
-    BeginMode2D(*camera_default());
-    draw_interface();
+    BeginMode2D(camera_default());
+    interface_render(state_screen());
     EndMode2D();
 }
 
 
-void draw_screen_none(void)
-{
-    DrawRectangle(0, 0, screen_width(), screen_height(), LIGHTGRAY);
-    DrawText("NULL Screen", 20, 20, 40, GRAY);
-}
-
-
-void draw_screen(void)
+void draw_state(void)
 {
     BeginDrawing();
     ClearBackground(RAYWHITE);
 
-    switch (screen_curr()) {
-        case INFEX_SCREEN_MAINMENU:
-            draw_screen_title();
-            break;
-        case INFEX_SCREEN_GAME:
-            draw_screen_game();
-            break;
-        default:
-            draw_screen_none();
-            break;
-    }
+    draw_screen();
 
     EndDrawing();
 }

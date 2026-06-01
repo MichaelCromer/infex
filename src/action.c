@@ -6,7 +6,7 @@
 #include "hdr/world.h"
 
 
-void action_quit(void) { set_quit(true); }
+void action_quit(void) { state_set_quit(true); }
 
 
 void action_mainmenu_background_initialise(void)
@@ -24,7 +24,7 @@ void action_start_random_game(void)
     world_initialise(32, 32);
     world_generate();
     camera_centre();
-    screen_set_curr(INFEX_SCREEN_GAME);
+    state_set_screen(INFEX_SCREEN_GAME);
 }
 
 

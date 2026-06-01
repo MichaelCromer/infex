@@ -1,17 +1,42 @@
 #include "hdr/draw.h"
+#include "hdr/infex.h"
 #include "hdr/state.h"
+
+
+void initialise(void)
+{
+    InitWindow(0, 0, "Infex");
+    int width = GetScreenWidth(), height = GetScreenHeight();
+
+    state_initialise();
+    draw_initialise(width, height);
+}
+
+
+void update(void)
+{
+    state_update();
+    draw_state();
+}
+
+
+void terminate(void)
+{
+    draw_terminate();
+    state_terminate();
+    CloseWindow();
+}
+
 
 int main(void)
 {
-    state_initialise();
-    draw_initialise();
+    initialise();
 
-    while (!is_quit() && !WindowShouldClose()) { /* WindowShouldClose for debug only */
-        state_update();
-        draw_screen();
+    while (!state_is_quit() && !WindowShouldClose()) { /* WindowShouldClose for debug only */
+        update();
     }
 
-    state_terminate();
+    terminate();
 
     return 0;
 }

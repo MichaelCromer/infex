@@ -5,14 +5,6 @@
 #define PAN_FACTOR_INERTIA (128.0f)
 #define PAN_FACTOR_DRAG (0.9f)
 
-const Camera2D DEFAULT = {
-    .target = {0.0f, 0.0f},
-    .offset = {0.0f, 0.0f},
-    .rotation = 0.0f,
-    .zoom = 1.0f,
-};
-
-
 Camera2D camera = {
     .target = {0.0f, 0.0f},
     .offset = {0.0f, 0.0f},
@@ -22,14 +14,19 @@ Camera2D camera = {
 
 Vector2 pan_velocity = { 0.0f, 0.0f };
 
-const Camera2D *camera_state(void)
+Camera2D camera_state(void)
 {
-    return (const Camera2D *)&camera;
+    return camera;
 }
 
-const Camera2D *camera_default(void)
+Camera2D camera_default(void)
 {
-    return &DEFAULT;
+    return (Camera2D){
+        .target = {0.0f, 0.0f},
+        .offset = {0.0f, 0.0f},
+        .rotation = 0.0f,
+        .zoom = 1.0f,
+    };
 }
 
 void camera_set_offset(Vector2 offset)
@@ -55,8 +52,8 @@ void camera_pan(Vector2 delta)
 void camera_centre(void)
 {
     Vector2 mid = { GetScreenWidth() / 2.0f, GetScreenHeight() / 2.0f };
-    camera_set_offset(mid);
-    camera_goto(mid);
+    camera.offset = mid;
+    camera.target = mid;
 }
 
 void camera_update(float dt)

@@ -1,5 +1,5 @@
 CC = gcc
-CFLAGS = -Wall -Wextra -Wpedantic -O3
+CFLAGS = -Wall -Wextra -Wpedantic
 CLIBS = -lraylib -lm
 
 DIR_SRC = src
@@ -26,7 +26,7 @@ $(DIR_BLD) $(DIR_OBJ): ; mkdir -p $@
 
 
 .PHONY: dev
-dev : CFLAGS = -g -fsanitize=address,leak,undefined -Wall -Wextra -Wpedantic
+dev : CFLAGS += -g -fsanitize=address,leak,undefined
 dev : clean $(TARGET)
 
 
@@ -41,4 +41,4 @@ clean:
 
 .PHONY: tags
 tags:
-	ctags $(SRC) $(HDR) $(DIR_LIB)/clay/clay.h $(DIR_LIB)/clay/renderers/raylib/*.c
+	ctags $(SRC) $(HDR)

@@ -4,3 +4,6 @@
 [submodule "clay"]
 	path = src/lib/clay
 	url = https://github.com/nicbarker/clay.git
+[submodule "raygui"]
+	path = src/lib/raygui
+	url = git@github.com:raysan5/raygui.git
